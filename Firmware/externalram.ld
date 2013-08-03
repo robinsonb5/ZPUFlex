@@ -1,10 +1,9 @@
 
-/* Memory Definitions for a ZPU program running from external RAM. */
+/* Memory Definitions for a ZPU program running from external RAM (up to 8 meg). */
 
 MEMORY
 {
   CODE (rx) : ORIGIN = 0x00000000, LENGTH = 0x00800000 /* 8 megabytes */
-  STACK (rw) : ORIGIN = 0x40000000, LENGTH = 0x00000400 /* 1024 bytes */
 }
 
 
