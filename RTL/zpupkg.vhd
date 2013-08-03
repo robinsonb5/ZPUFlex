@@ -56,8 +56,8 @@ package zpupkg is
   constant wordBytes  : integer := wordSize/8;
   constant minAddrBit : integer := byteBits;
   -- configurable internal stack size. Probably going to be 16 after toolchain is done
-  constant stack_bits : integer := 5;
-  constant stack_size : integer := 2**stack_bits;
+--  constant stack_bits : integer := 5; -- not used by flex variant
+--  constant stack_size : integer := 2**stack_bits; -- not used by flex variant
 
 
   ------------------------------------------------------------ 

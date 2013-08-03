@@ -52,15 +52,18 @@ use work.zpupkg.all;
 entity zpu_core is
   generic (
     IMPL_MULTIPLY : boolean := true; -- Self explanatory
-	 IMPL_COMPARISON_SUB : boolean := true; -- Include sub and (U)lessthan(orequal)
-	 IMPL_EQBRANCH : boolean := true; -- Include eqbranch and neqbranch
-	 IMPL_STOREBH : boolean := true; -- Include halfword and byte writes
-	 IMPL_LOADBH : boolean := true; -- Include halfword and byte reads
-	 IMPL_CALL : boolean := true; -- Include call
-	 IMPL_SHIFT : boolean := true; -- Include lshiftright, ashiftright and ashiftleft
-	 IMPL_XOR : boolean := true; -- include xor instruction
-	 REMAP_STACK : boolean := true; -- Map the stack / Boot ROM to 0x04000000
-	 EXECUTE_RAM : boolean := true -- include support for executing code from outside the Boot ROM
+	IMPL_COMPARISON_SUB : boolean := true; -- Include sub and (U)lessthan(orequal)
+	IMPL_EQBRANCH : boolean := true; -- Include eqbranch and neqbranch
+	IMPL_STOREBH : boolean := true; -- Include halfword and byte writes
+	IMPL_LOADBH : boolean := true; -- Include halfword and byte reads
+	IMPL_CALL : boolean := true; -- Include call
+	IMPL_SHIFT : boolean := true; -- Include lshiftright, ashiftright and ashiftleft
+	IMPL_XOR : boolean := true; -- include xor instruction
+	EXECUTE_RAM : boolean := true -- include support for executing code from outside the Boot ROM
+	REMAP_STACK : boolean := true; -- Map the stack / Boot ROM to an address specific by "stackbit" - default 0x04000000
+	stackbit : integer := 26; -- Map stack to 0x04000000
+	maxAddrBitExternalRAM : integer := 25; -- Address up to 64 megabytes of RAM.
+	maxAddrBitBRAM : integer := maxAddrBitBRAMLimit; -- Specify significant bits of BRAM.
   );
   port ( 
 		clk                 : in std_logic;

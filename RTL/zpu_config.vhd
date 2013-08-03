@@ -47,8 +47,7 @@ package zpu_config is
   constant ZPU_Frequency   : std_logic_vector(7 downto 0) := x"64";
   -- This is the msb address bit. bytes=2^(maxAddrBitIncIO+1)
   constant maxAddrBitIncIO : integer                      := 31;
-  constant maxAddrBitExternalRAM  : integer               := 25;
-  constant maxAddrBitBRAM  : integer                      := 11;
+  constant maxAddrBitBRAMLimit : integer := 15; -- Address up to 64K of program ROM.  Note, this is a maximum size and the actual size will be specified in generics.
 
   -- start byte address of stack. 
   -- point to top of RAM - 2*words
