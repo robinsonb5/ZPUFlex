@@ -59,11 +59,11 @@ entity zpu_core is
 	IMPL_CALL : boolean := true; -- Include call
 	IMPL_SHIFT : boolean := true; -- Include lshiftright, ashiftright and ashiftleft
 	IMPL_XOR : boolean := true; -- include xor instruction
-	EXECUTE_RAM : boolean := true -- include support for executing code from outside the Boot ROM
+	EXECUTE_RAM : boolean := true; -- include support for executing code from outside the Boot ROM
 	REMAP_STACK : boolean := true; -- Map the stack / Boot ROM to an address specific by "stackbit" - default 0x04000000
 	stackbit : integer := 26; -- Map stack to 0x04000000
 	maxAddrBitExternalRAM : integer := 25; -- Address up to 64 megabytes of RAM.
-	maxAddrBitBRAM : integer := maxAddrBitBRAMLimit; -- Specify significant bits of BRAM.
+	maxAddrBitBRAM : integer := maxAddrBitBRAMLimit -- Specify significant bits of BRAM.
   );
   port ( 
 		clk                 : in std_logic;

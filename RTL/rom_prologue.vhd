@@ -45,7 +45,7 @@ use work.zpupkg.all;
 entity dualportram is
 generic
 	(
-		maxAddrBit : integer := maxAddrBitBRAMLimit; -- Specify your actual ROM size to save LEs and unnecessary block RAM usage.
+		maxAddrBit : integer := maxAddrBitBRAMLimit -- Specify your actual ROM size to save LEs and unnecessary block RAM usage.
 	);
 port (
 	clk : in std_logic;
