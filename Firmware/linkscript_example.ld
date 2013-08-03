@@ -1,0 +1,57 @@
+
+/* Memory Definitions for a ZPU program running from external RAM. */
+
+MEMORY
+{
+  CODE (rx) : ORIGIN = 0x00000000, LENGTH = 0x00800000 /* 8 megabytes */
+  STACK (rw) : ORIGIN = 0x40000000, LENGTH = 0x00000400 /* 1024 bytes */
+}
+
+
+/* Section Definitions */
+
+SECTIONS
+{
+  /* first section is .fixed_vectors which is used for startup code */
+  . = 0x0000000;
+  .fixed_vectors :
+  {
+    *(.fixed_vectors)
+  }>CODE
+
+  /* Remaining code sections */
+  . = ALIGN(4);
+  .text :
+  {
+    *(.text)                   /* remaining code */
+  } >CODE
+
+  /* .rodata section which is used for read-only data (constants) */
+  . = ALIGN(4);
+  .rodata :
+  {
+    *(.rodata)
+  } >CODE
+  . = ALIGN(4);
+
+  /* .data section which is used for initialized data. */
+  . = ALIGN(4);
+  .data :
+  {
+    _data = . ;
+    *(.data)
+    SORT(CONSTRUCTORS)
+    . = ALIGN(4);
+  } >CODE
+
+  /* .bss section which is used for uninitialized data */
+  . = ALIGN(4);
+  .bss :
+  {
+    __bss_start = . ;
+    __bss_start__ = . ;
+    *(.bss)
+    *(COMMON)
+  } >CODE
+  __bss_end__ = . ;
+}
