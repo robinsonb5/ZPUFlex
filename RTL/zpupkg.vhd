@@ -51,12 +51,12 @@ package zpupkg is
   constant byteBits   : integer := wordPower-3;  -- # of bits in a word that addresses bytes
   constant maxAddrBit : integer := maxAddrBitIncIO;
 --  constant ioBit      : integer := maxAddrBit+1;
-  constant stackBit	 : integer := maxAddrBitExternalRAM+1;
+--  constant stackBit	 : integer := maxAddrBitExternalRAM+1;
   constant wordSize   : integer := 2**wordPower;
   constant wordBytes  : integer := wordSize/8;
   constant minAddrBit : integer := byteBits;
   -- configurable internal stack size. Probably going to be 16 after toolchain is done
---  constant stack_bits : integer := 5; -- not used by flex variant
+  constant stack_bits : integer := 5; -- not used by flex variant
 --  constant stack_size : integer := 2**stack_bits; -- not used by flex variant
 
 
@@ -67,11 +67,11 @@ package zpupkg is
     port (
       clk             : in  std_logic;
       memAWriteEnable : in  std_logic;
-      memAAddr        : in  std_logic_vector(maxAddrBitBRAM downto minAddrBit);
+      memAAddr        : in  std_logic_vector(maxAddrBitBRAMLimit downto minAddrBit);
       memAWrite       : in  std_logic_vector(wordSize-1 downto 0);
       memARead        : out std_logic_vector(wordSize-1 downto 0);
       memBWriteEnable : in  std_logic;
-      memBAddr        : in  std_logic_vector(maxAddrBitBRAM downto minAddrBit);
+      memBAddr        : in  std_logic_vector(maxAddrBitBRAMLimit downto minAddrBit);
       memBWrite       : in  std_logic_vector(wordSize-1 downto 0);
       memBRead        : out std_logic_vector(wordSize-1 downto 0)
       );
@@ -79,10 +79,10 @@ package zpupkg is
 
 	type ZPU_ToROM is record
 		memAWriteEnable : std_logic;
-		memAAddr : std_logic_vector(maxAddrBitBRAM downto minAddrBit);
+		memAAddr : std_logic_vector(maxAddrBitBRAMLimit downto minAddrBit);
 		memAWrite : std_logic_vector(wordSize-1 downto 0);
 		memBWriteEnable : std_logic;
-		memBAddr : std_logic_vector(maxAddrBitBRAM downto minAddrBit);
+		memBAddr : std_logic_vector(maxAddrBitBRAMLimit downto minAddrBit);
 		memBWrite : std_logic_vector(wordSize-1 downto 0);
 	end record;
 	type ZPU_FromROM is record
