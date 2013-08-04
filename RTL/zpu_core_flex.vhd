@@ -96,6 +96,11 @@ end zpu_core;
 
 architecture behave of zpu_core is
 
+  -- start byte address of stack. 
+  -- point to top of RAM - 2*words
+  constant spStart : std_logic_vector(maxAddrBitIncIO downto 0) :=
+    std_logic_vector(to_unsigned((2**(maxAddrBitBRAM+1))-8, maxAddrBitIncIO+1));
+
   signal memAWriteEnable : std_logic;
   signal memAAddr        : unsigned(maxAddrBitBRAM downto minAddrBit);
   signal memAWrite       : unsigned(wordSize-1 downto 0);
@@ -262,10 +267,10 @@ begin
 	memBRead_stdlogic <= from_rom.memBRead;
 
 	to_rom.memAWriteEnable <= memAWriteEnable;
-	to_rom.memAAddr <= memAAddr_stdlogic;
+	to_rom.memAAddr(AddrBitBRAM_range) <= memAAddr_stdlogic;
 	to_rom.memAWrite       <= memAWrite_stdlogic;
 	to_rom.memBWriteEnable <= memBWriteEnable;
-	to_rom.memBAddr        <= memBAddr_stdlogic;
+	to_rom.memBAddr(AddrBitBRAM_range) <= memBAddr_stdlogic;
 	to_rom.memBWrite       <= memBWrite_stdlogic;
 
 	memARead <= unsigned(memARead_stdlogic);
@@ -430,8 +435,8 @@ begin
 		end if;
       idim_flag           <= '0';
       begin_inst          <= '0';
-      memAAddr            <= (others => '0');
-      memBAddr            <= (others => '0');
+      memAAddr(AddrBitBRAM_range) <= (others => '0');
+      memBAddr(AddrBitBRAM_range) <= (others => '0');
       memAWriteEnable     <= '0';
       memBWriteEnable     <= '0';
       out_mem_writeEnable <= '0';
@@ -457,7 +462,7 @@ begin
 		
 		-- We want memAAddr to remain stable since the length of the fetch depends on external RAM.
 --      memAAddr        <= (others => DontCareValue);
-      memBAddr        <= (others => DontCareValue);
+      memBAddr(AddrBitBRAM_range) <= (others => DontCareValue);
 
 		opcode_saved<=opcode;
 		
@@ -529,7 +534,7 @@ begin
 
             when Decoded_Interrupt =>
               sp                             <= sp - 1;
-              memAAddr                       <= sp - 1;
+              memAAddr(AddrBitBRAM_range)    <= sp - 1;
               memAWriteEnable                <= '1';
               memAWrite                      <= (others => DontCareValue);
               memAWrite(maxAddrBit downto 0) <= pc;
@@ -543,32 +548,32 @@ begin
               memAWriteEnable <= '1';
               if (idim_flag = '0') then
                 sp       <= sp - 1;
-                memAAddr <= sp-1;
+                memAAddr(AddrBitBRAM_range) <= sp-1;
                 for i in wordSize-1 downto 7 loop
                   memAWrite(i) <= opcode(6);
                 end loop;
                 memAWrite(6 downto 0) <= unsigned(opcode(6 downto 0));
               else
-                memAAddr                       <= sp;
+                memAAddr(AddrBitBRAM_range) <= sp;
                 memAWrite(wordSize-1 downto 7) <= memARead(wordSize-8 downto 0);
                 memAWrite(6 downto 0)          <= unsigned(opcode(6 downto 0));
               end if;  -- idim_flag
 
             when Decoded_StoreSP =>
               memBWriteEnable <= '1';
-              memBAddr        <= sp+spOffset;
+              memBAddr(AddrBitBRAM_range) <= sp+spOffset;
               memBWrite       <= memARead;
               sp              <= sp + 1;
               state           <= State_Resync;
 
             when Decoded_LoadSP =>
               sp       <= sp - 1;
-              memAAddr <= sp+spOffset;
+              memAAddr(AddrBitBRAM_range) <= sp+spOffset;
 
             when Decoded_Emulate =>
               sp                             <= sp - 1;
               memAWriteEnable                <= '1';
-              memAAddr                       <= sp - 1;
+              memAAddr(AddrBitBRAM_range)    <= sp - 1;
               memAWrite                      <= (others => DontCareValue);
               memAWrite(maxAddrBit downto 0) <= pc + 1;
               -- The emulate address is:
@@ -580,8 +585,8 @@ begin
 
 
             when Decoded_AddSP =>
-              memAAddr <= sp;
-              memBAddr <= sp+spOffset;
+              memAAddr(AddrBitBRAM_range) <= sp;
+              memBAddr(AddrBitBRAM_range) <= sp+spOffset;
               state    <= State_AddSP;
 
             when Decoded_Break =>
@@ -590,7 +595,7 @@ begin
 
             when Decoded_PushSP =>
               memAWriteEnable                         <= '1';
-              memAAddr                                <= sp - 1;
+              memAAddr(AddrBitBRAM_range)             <= sp - 1;
               sp                                      <= sp - 1;
               memAWrite                               <= (others => DontCareValue);
 					if REMAP_STACK=true then
@@ -652,7 +657,7 @@ begin
 						memARead(maxAddrBitIncIO)='0' and memARead(stackBit) = '1')
 --						or (REMAP_STACK=false and memARead(maxAddrBitIncIO)='0') then
 						or (REMAP_STACK=false and memARead(maxAddrBitIncIO downto maxAddrBitBRAM+1)=to_unsigned(0,maxAddrBitIncIO-maxAddrBitBRAM)) then -- Access is bound for stack RAM
-							memAAddr <= memARead(maxAddrBitBRAM downto minAddrBit);
+							memAAddr(AddrBitBRAM_range) <= memARead(AddrBitBRAM_range);
 				  else
 					 out_mem_addr(1 downto 0) <="00";
 					 out_mem_addr(maxAddrBitIncIO downto 2)<= std_logic_vector(memARead(maxAddrBitIncIO downto 2));
@@ -673,19 +678,19 @@ begin
 					state <= State_EqNeq;
 
             when Decoded_Not =>
-              memAAddr        <= sp(maxAddrBitBRAM downto minAddrBit);
+              memAAddr(AddrBitBRAM_range) <= sp(maxAddrBitBRAM downto minAddrBit);
               memAWriteEnable <= '1';
               memAWrite       <= not memARead;
 
             when Decoded_Flip =>
-              memAAddr        <= sp(maxAddrBitBRAM downto minAddrBit);
+              memAAddr(AddrBitBRAM_range) <= sp(maxAddrBitBRAM downto minAddrBit);
               memAWriteEnable <= '1';
               for i in 0 to wordSize-1 loop
                 memAWrite(i) <= memARead(wordSize-1-i);
               end loop;
 
             when Decoded_Store =>
-              memBAddr <= sp + 1;
+              memBAddr(AddrBitBRAM_range) <= sp + 1;
               sp       <= sp + 1;
               if (REMAP_STACK=true and memARead(maxAddrBitIncIO)='0'	and memARead(stackBit) = '1')
 --						or (REMAP_STACK=false and memARead(maxAddrBitIncIO)='0') then
@@ -697,7 +702,7 @@ begin
 
 				when Decoded_StoreBH =>
 				  if IMPL_STOREBH=true then
-					  memBAddr <= sp + 1;
+					  memBAddr(AddrBitBRAM_range) <= sp + 1;
 					  sp       <= sp + 1;
 					 state <= State_WriteIOBH;
 				  end if;
@@ -712,7 +717,7 @@ begin
 						fetchneeded<='1'; -- Need to set this any time PC changes.
 
 						memAWriteEnable                <= '1';
-						memAAddr                       <= sp; -- Replace stack top with PC+1
+						memAAddr(AddrBitBRAM_range)    <= sp; -- Replace stack top with PC+1
 						memAWrite                      <= (others => DontCareValue);
 						memAWrite(maxAddrBit downto 0) <= pc + 1;
 					end if;
@@ -728,7 +733,7 @@ begin
 					end if;
 
 				when Decoded_Nop =>
-              memAAddr <= sp;
+              memAAddr(AddrBitBRAM_range) <= sp;
 
             when others =>
               null;
@@ -738,7 +743,7 @@ begin
 		  -- From this point on opcode is not guaranteed to be valid if using BlockRAM.
 
         when State_ReadIO =>
-				memAAddr <= sp;
+				memAAddr(AddrBitBRAM_range) <= sp;
 				if (in_mem_busy = '0') then
 					state           <= State_Fetch;
 					memAWriteEnable <= '1';
@@ -749,7 +754,7 @@ begin
 				
         when State_ReadIOBH =>
 				if IMPL_LOADBH=true then
-					memAAddr <= sp;
+					memAAddr(AddrBitBRAM_range) <= sp;
 					out_mem_bEnable <= opcode_saved(0); -- Loadb is opcode 51, %00110011
 					out_mem_hEnable <= not opcode_saved(0); -- Loadh is copde 34, %00100010
 					if (in_mem_busy = '0') then
@@ -806,7 +811,7 @@ begin
           -- we'll fetch the opcode @ pc and thus it will
           -- be available for State_Execute the cycle after
           -- next
-          memBAddr <= pc(maxAddrBitBRAM downto minAddrBit);
+          memBAddr(AddrBitBRAM_range) <= pc(maxAddrBitBRAM downto minAddrBit);
 			 state    <= State_FetchNext;
 
         when State_FetchNext =>
@@ -816,8 +821,8 @@ begin
 				 memAWriteEnable <= '1';
 				 fetchneeded<='0';
 				 memAWrite       <= memARead;
-				 memAAddr        <= sp;
-				 memBAddr        <= sp + 1;
+				 memAAddr(AddrBitBRAM_range) <= sp;
+				 memBAddr(AddrBitBRAM_range) <= sp + 1;
 				 state           <= State_Decode;
 			 end if;
 
@@ -828,14 +833,14 @@ begin
             decodedOpcode <= Decoded_Interrupt;
           end if;
           -- during the State_Execute cycle we'll be fetching SP+1  (AMR - already done at FetchNext, yes?)
-          memAAddr <= sp;
-          memBAddr <= sp + 1;
+          memAAddr(AddrBitBRAM_range) <= sp;
+          memBAddr(AddrBitBRAM_range) <= sp + 1;
           state    <= State_Execute;
 
         when State_Store =>
           sp              <= sp + 1;
           memAWriteEnable <= '1';
-          memAAddr        <= memARead(maxAddrBitBRAM downto minAddrBit);
+          memAAddr(AddrBitBRAM_range) <= memARead(maxAddrBitBRAM downto minAddrBit);
           memAWrite       <= memBRead;
           state           <= State_Resync;
 
@@ -843,31 +848,31 @@ begin
 				state <= State_Add;
 
         when State_Add =>
-          memAAddr        <= sp;
+          memAAddr(AddrBitBRAM_range) <= sp;
           memAWriteEnable <= '1';
           memAWrite       <= memARead + memBRead;
           state           <= State_Fetch;
 
 			when State_Sub =>
-				memAAddr        <= sp;
+				memAAddr(AddrBitBRAM_range) <= sp;
 				memAWriteEnable <= '1';
 				memAWrite       <= comparison_sub_result(wordSize-1 downto 0);
 				state           <= State_Fetch;
 
 			when State_Mult =>
-          memAAddr        <= sp;
+          memAAddr(AddrBitBRAM_range) <= sp;
           memAWriteEnable <= '1';
           memAWrite       <= tMultResult(wordSize-1 downto 0);
           state           <= State_Fetch;
 
 		  when State_Or =>
-          memAAddr        <= sp;
+          memAAddr(AddrBitBRAM_range) <= sp;
           memAWriteEnable <= '1';
           memAWrite       <= memARead or memBRead;
           state           <= State_Fetch;
 
 		  when State_Xor =>
-          memAAddr        <= sp;
+          memAAddr(AddrBitBRAM_range) <= sp;
           memAWriteEnable <= '1';
           memAWrite       <= memARead xor memBRead;
           state           <= State_Fetch;
@@ -877,24 +882,24 @@ begin
 				state <= State_Resync;
 
         when State_Resync =>
-          memAAddr <= sp;
+          memAAddr(AddrBitBRAM_range) <= sp;
           state    <= State_Fetch;
 
         when State_And =>
-          memAAddr        <= sp;
+          memAAddr(AddrBitBRAM_range) <= sp;
           memAWriteEnable <= '1';
           memAWrite       <= memARead and memBRead;
           state           <= State_Fetch;
 
 		  when State_EqNeq =>
-				memAAddr <= sp;
+				memAAddr(AddrBitBRAM_range) <= sp;
 				memAWriteEnable <= '1';
 				memAWrite       <= (others =>'0');
 				memAWrite(0) <= comparison_eq xor opcode_saved(4); -- eq is 46, neq is 48.
 				state <= State_Fetch;
 				
 			when State_Comparison =>
-				memAAddr <= sp;
+				memAAddr(AddrBitBRAM_range) <= sp;
 				memAWriteEnable <= '1';
 				memAWrite <= (others => '0');
 				if opcode_saved(1)='1' then -- Unsigned comparison, opcodes 38, 39				
@@ -908,7 +913,7 @@ begin
 
 			when State_Shift =>
 				if shift_done='1' then
-					memAAddr        <= sp;
+					memAAddr(AddrBitBRAM_range) <= sp;
 					memAWriteEnable <= '1';
 					memAWrite       <= shift_reg;
 					state           <= State_Fetch;

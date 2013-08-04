@@ -49,9 +49,4 @@ package zpu_config is
   constant maxAddrBitIncIO : integer                      := 31;
   constant maxAddrBitBRAMLimit : integer := 15; -- Address up to 64K of program ROM.  Note, this is a maximum size and the actual size will be specified in generics.
 
-  -- start byte address of stack. 
-  -- point to top of RAM - 2*words
-  constant spStart : std_logic_vector(maxAddrBitIncIO downto 0) :=
-    std_logic_vector(to_unsigned((2**(maxAddrBitBRAMLimit+1))-8, maxAddrBitIncIO+1));
-
 end zpu_config;
