@@ -2,6 +2,14 @@ ZPUFlex - a compact and flexible variant of the ZPU - the Zylin soft processor
 core.  The aim of this project is to see just how far the "small" variant
 of the core can be be taken while keeping it under 1000 logic elements.
 
+While the regular ZPU-core is a simple general-purpose processor, the
+zpu_small variant on which this project is based is limited by a fixed-size
+BlockRAM-based stack which doubles as program ROM.  This makes it more
+self-contained but limits the complexity of the programs that can be run.
+The original zpu_small version could only run software from the internal
+BlockRAM, but this project makes it possible to run from external RAM too,
+so a boot ROM that loads firmware from SD card is perfectly possible.
+
 I've tried to keep the project as configurable as possible, so there are a
 number of generics which can be used to configure this ZPU variant.  A few
 other parameters have been moved from zpucfg.vhd to generics, because this
@@ -15,6 +23,10 @@ LEs, but in combination with various GCC switches, can make do without
 emulation code; thus how you set these switches will depend on whether you're
 short of LEs or Block RAM.
 
+With all the switches enabled the performance is surprisingly good for such
+a tiny CPU, thanks largely to the stack being in Block RAM.
+
+The switches for optional instructions are:
 * IMPL_MULTIPLY - hardware mult
 * IMPL_COMPARISON_SUB - hardware sub, lessthan, lessthanorequal,
   ulessthan, ulessthanorequal.
@@ -33,4 +45,13 @@ There are a couple of other switches too:
   to an alternative address (0x04000000 by default).
   This is useful in combination with the EXECUTE_RAM switch if you want
   to bootstrap a larger program than will fit in the BlockRAM-based Boot ROM.
+
+Finally there are a few integer parameters:
+* stackbit - sets the base address for the stack, if using REMAP_STACK mode.
+  if REMAP_STACK is not set this is ignored.  The default value is 26, which
+  maps the STACK to 2**26, or 0x04000000, which leaves room for up to 64 meg
+  of RAM.  If you need to use a larger RAM, just set stackbit to something 
+  higher - but you'll need to adjust the base address in your linkscript to
+  match.
+* maxAddrBitBRAM - the highest valid address bit for the Stack RAM / ROM.
 
