@@ -134,7 +134,7 @@ package zpupkg is
 	 REMAP_STACK : boolean := true; -- Map the stack / Boot ROM to 0x40000000, to allow pushsp, store to work.
 	 EXECUTE_RAM : boolean := true; -- include support for executing code from outside the Boot ROM
 	stackbit : integer := 26; -- Map stack to 0x04000000
-	maxAddrBitExternalRAM : integer := 25; -- Address up to 64 megabytes of RAM.
+--	maxAddrBitExternalRAM : integer := 25; -- Address up to 64 megabytes of RAM.
 	maxAddrBitBRAM : integer := maxAddrBitBRAMLimit -- Specify significant bits of BRAM.
   );
     port ( 
