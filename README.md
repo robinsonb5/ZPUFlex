@@ -1,4 +1,6 @@
-ZPUFlex - a compact and flexible variant of the ZPU - the Zylin soft processor
+ZPUFlex
+=======
+A compact and flexible variant of the ZPU - the Zylin soft processor
 core.  The aim of this project is to see just how far the "small" variant
 of the core can be be taken while keeping it under 1000 logic elements.
 

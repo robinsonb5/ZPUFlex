@@ -55,7 +55,7 @@ _start:
 	.balign 4,0
 _boot:
 	im 0
-	poppc ; should execute without a further fetch
+	poppc
 
 	.global _break;
 _break:
@@ -164,12 +164,9 @@ _storeb:
 	poppc
 
 _premain:
-	im .endloop
+	im _break
 	nop
 	fixedim main
-	poppc
-.endloop:
-	im .endloop
 	poppc
 
 	.section ".rodata"

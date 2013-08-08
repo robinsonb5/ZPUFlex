@@ -153,7 +153,7 @@ Boston, MA 02111-1307, USA.  */
 # offset 0x0000 0000
 		.globl _start
 _start:
-		jmp main
+		jmp _premain
 
         .balign 32,0
 # offset 0x0000 0020
@@ -929,6 +929,24 @@ _slowmultImpl:
 	storesp 4
 	storesp 12
 	storesp 4
+	poppc
+
+	.section ".text","ax"
+	.global _boot
+	.balign 4,0
+_boot:
+	im 0
+	poppc
+
+	.global _break;
+_break:
+	loadsp 0
+	poppc ; infinite loop
+
+_premain:
+	im _break
+	nop
+	fixedim main
 	poppc
 	
 ;	.data // This is read only, so we don't really want it in a normal data section
