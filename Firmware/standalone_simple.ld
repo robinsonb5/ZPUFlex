@@ -53,5 +53,6 @@ SECTIONS
     *(.bss)
     *(COMMON)
   } >CODE
+  _romend = . ;
   __bss_end__ = . ;
 }
