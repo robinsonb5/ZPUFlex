@@ -940,13 +940,13 @@ _boot:
 
 	.global _break;
 _break:
-	loadsp 0
+	im _break
 	poppc ; infinite loop
 
 _premain:
 	im _break
 	nop
-	fixedim main
+	im main
 	poppc
 	
 ;	.data // This is read only, so we don't really want it in a normal data section

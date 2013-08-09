@@ -59,7 +59,7 @@ _boot:
 
 	.global _break;
 _break:
-	loadsp 0
+	im	_break
 	poppc ; infinite loop
 
 	.global _loadh

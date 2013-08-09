@@ -140,7 +140,7 @@ package zpupkg is
     port ( 
       clk                 : in  std_logic;
       reset               : in  std_logic;
-      enable              : in  std_logic; 
+      enable              : in  std_logic := '1'; 
       in_mem_busy         : in  std_logic;
       mem_read            : in  std_logic_vector(wordSize-1 downto 0);
       mem_write           : out std_logic_vector(wordSize-1 downto 0);
@@ -150,7 +150,7 @@ package zpupkg is
       out_mem_hEnable : out std_logic;
       out_mem_readEnable  : out std_logic;
 --      mem_writeMask       : out std_logic_vector(wordBytes-1 downto 0);
-      interrupt           : in  std_logic;
+      interrupt           : in  std_logic := '0';
       break               : out std_logic;
 		from_rom : in ZPU_FromROM;
 		to_rom : out ZPU_ToROM
