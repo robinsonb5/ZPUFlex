@@ -43,6 +43,7 @@ SECTIONS
     SORT(CONSTRUCTORS)
     . = ALIGN(4);
   } >CODE
+  _romend = . ;
 
   /* .bss section which is used for uninitialized data */
   . = ALIGN(4);
@@ -53,6 +54,5 @@ SECTIONS
     *(.bss)
     *(COMMON)
   } >CODE
-  _romend = . ;
   __bss_end__ = . ;
 }
