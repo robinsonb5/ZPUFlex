@@ -98,7 +98,7 @@ Boston, MA 02111-1307, USA.  */
 	storesp 0
 	storesp 0	
 	 
-	im 0
+	im 8+0
 	load
 	
 	; poke the result into the right slot
