@@ -44,21 +44,21 @@ Boston, MA 02111-1307, USA.  */
 
 	.macro  jsr address
 	
-			im 0		; save R0
+			im 8+0		; save R0
 			load
-			im 4		; save R1
+			im 8+4		; save R1
 			load
-			im 8		; save R2
+			im 8+8		; save R2
 			load
 	
 			fixedim \address
 			call
 			
-			im 8
+			im 8+8
 			store		; restore R2
-			im 4
+			im 8+4
 			store		; restore R1
-			im 0
+			im 8+0
 			store		; restore R0
 	.endm
 
@@ -77,15 +77,15 @@ Boston, MA 02111-1307, USA.  */
 	
 	.macro cimpl funcname
 	; save R0
-	im 0
+	im 8+0
 	load
 	
 	; save R1
-	im 4
+	im 8+4
 	load
 	
 	; save R2
-	im 8
+	im 8+8
 	load
 	
 	loadsp 20
@@ -98,22 +98,22 @@ Boston, MA 02111-1307, USA.  */
 	storesp 0
 	storesp 0	
 	 
-	im 0
+	im 8+0
 	load
 	
 	; poke the result into the right slot
 	storesp 24
 
 	; restore R2
-	im 8
+	im 8+8
 	store
 	
 	; restore R1
-	im 4
+	im 8+4
 	store
 	
 	; restore r0
-	im 0
+	im 8+0
 	store
 	
 	
@@ -154,14 +154,36 @@ Boston, MA 02111-1307, USA.  */
 		.globl _start
 _start:
 		jmp _premain
+		.balign 8,0
+	.globl _memreg
+_memreg:
+		.long 0
+		.long 0
+		.long 0
+		.long 0
 
         .balign 32,0
 # offset 0x0000 0020
 		.globl _zpu_interrupt_vector
 _zpu_interrupt_vector:
-#		jsr _zpu_interrupt
-		poppc
-
+			im 8+0		; save R0
+			load
+			im 8+4		; save R1
+			load
+			im 8+8		; save R2
+			load
+	
+			fixedim	_inthandler_fptr
+			load
+			call
+			
+			im 8+8
+			store		; restore R2
+			im 8+4
+			store		; restore R1
+			im 8+0
+			store		; restore R0
+			poppc
 
 /* instruction emulation code */
 
@@ -948,6 +970,14 @@ _premain:
 	nop
 	im main
 	poppc
+
+_default_inthandler:
+	poppc
+
+	.global _inthandler_fptr
+	.balign 4,0
+_inthandler_fptr:
+	.long _default_inthandler
 	
 ;	.data // This is read only, so we don't really want it in a normal data section
 	.section ".rodata"
@@ -957,13 +987,4 @@ _mask:
 	.long 0xff00ffff
 	.long 0xffff00ff
 	.long 0xffffff00
-
-	.section ".bss"
-    .balign 4,0
-	.globl _memreg
-_memreg:
-		.long 0
-		.long 0
-		.long 0
-		.long 0
 
