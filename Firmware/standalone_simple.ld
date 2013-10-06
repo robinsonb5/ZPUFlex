@@ -2,11 +2,6 @@
 /* Memory Definitions for a ZPU program running either from external RAM (up to 8 meg).
    or from unremapped Boot ROM / Stack RAM. */
 
-MEMORY
-{
-  CODE (rx) : ORIGIN = 0x00000000, LENGTH = 0x00800000 /* 8 megabytes */
-}
-
 
 /* Section Definitions */
 
@@ -17,21 +12,21 @@ SECTIONS
   .fixed_vectors :
   {
     *(.fixed_vectors)
-  }>CODE
+  }
 
   /* Remaining code sections */
   . = ALIGN(4);
   .text :
   {
     *(.text)                   /* remaining code */
-  } >CODE
+  } 
 
   /* .rodata section which is used for read-only data (constants) */
   . = ALIGN(4);
   .rodata :
   {
     *(.rodata)
-  } >CODE
+  } 
   . = ALIGN(4);
 
   /* .data section which is used for initialized data. */
@@ -42,7 +37,7 @@ SECTIONS
     *(.data)
     SORT(CONSTRUCTORS)
     . = ALIGN(4);
-  } >CODE
+  } 
   _romend = . ;
 
   /* .bss section which is used for uninitialized data */
@@ -53,6 +48,7 @@ SECTIONS
     __bss_start__ = . ;
     *(.bss)
     *(COMMON)
-  } >CODE
+  } 
   __bss_end__ = . ;
+  _end = . ;
 }
