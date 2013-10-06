@@ -25,6 +25,7 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 	.file	"mincrt0.S"
 
+/* FIXME - add support for interrupts! */
 
 /* Minimal startup code, usable where the core is complete enough not to require emulated instructions */
 	
@@ -53,7 +54,11 @@ _start:
 	.section ".text","ax"
 	.global _boot
 	.balign 4,0
+_savedstack:
+	.long 0
 _boot:
+	im _savedstack
+	popsp
 	im 0
 	poppc
 
@@ -164,6 +169,11 @@ _storeb:
 	poppc
 
 _premain:
+	pushsp
+	im 4
+	add
+	im _savedstack
+	store
 	im _break
 	nop
 	fixedim main
