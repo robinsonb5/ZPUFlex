@@ -11,7 +11,7 @@ SECTIONS
   . = 0x0000000;
   .fixed_vectors :
   {
-    *(.fixed_vectors)
+	KEEP(*(.fixed_vectors)) /* Seed section - allows -gc-sections */
   }
 
   /* Remaining code sections */
@@ -19,6 +19,7 @@ SECTIONS
   .text :
   {
     *(.text)                   /* remaining code */
+    *(.text.*)                   /* remaining code */
   } 
 
   /* .rodata section which is used for read-only data (constants) */
@@ -26,6 +27,7 @@ SECTIONS
   .rodata :
   {
     *(.rodata)
+    *(.rodata.*)
   } 
   . = ALIGN(4);
 
@@ -35,6 +37,7 @@ SECTIONS
   {
     _data = . ;
     *(.data)
+    *(.data.*)
     SORT(CONSTRUCTORS)
     . = ALIGN(4);
   } 
@@ -47,6 +50,7 @@ SECTIONS
     __bss_start = . ;
     __bss_start__ = . ;
     *(.bss)
+    *(.bss.*)
     *(COMMON)
   } 
   __bss_end__ = . ;
