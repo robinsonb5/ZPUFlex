@@ -1,0 +1,29 @@
+Turbo variant:
+
+Need to do some kind of pipelining in order to keep things as efficient as possible.
+
+We have dual port RAM - memA and memB.  At the Execute stage, memA must be pointing at sp, and memB must point at sp+1.
+
+(Alternatively, memA can point at sp for instructions that require one operation, and memB can be one cycle behind,
+and we handle two-operation instructions in the next cycle.  That's how it currently works.)
+
+Some instructions have a stack offset encoded within them.  This means we have an adder available, so there's
+no reason not to use it to calculate new stack offsets.
+
+Combinational:
+	spsum1 <= sp + spoffset;
+	spincdec <= sp + 1 when spinc='1' else sp-1;  -- Both spoffset and spinc depend upon the instruction.
+
+Decode:
+	extract spoffset and spincdec from opcode.
+	(If spoffset is consistently placed within the opcode, this could be combinational.)
+	Could potentially write new MemA and MemB addresses here for speed.
+
+Execute:
+	Increment program counter
+	If lower two bits are "11" we need to fetch a new word.
+
+	For instructions that push to the stack, membaddr will end up taking memaaddr's previous value.
+	We can cheat in that instance and write memaread to membaddr, and read-during-write
+	will avoid the 2-cycle delay we'd normally suffer.
+

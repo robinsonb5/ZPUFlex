@@ -353,8 +353,9 @@ begin
 			end if;
 		end if;
 		if IMPL_LOADBH=true then
-			if tOpcode(5 downto 0) = OpCode_LoadB
-				or tOpcode(5 downto 0) = OpCode_LoadH then
+--			if tOpcode(5 downto 0) = OpCode_LoadB
+--				or tOpcode(5 downto 0) = OpCode_LoadH then
+			if tOpcode(5 downto 0) = OpCode_LoadH then -- Disable LoadB for now, since it doesn't yet work.
 				sampledDecodedOpcode <= Decoded_LoadBH;
 			end if;
 		end if;
@@ -753,13 +754,23 @@ begin
 				
         when State_ReadIOBH =>
 				if IMPL_LOADBH=true then
-					memAAddr(AddrBitBRAM_range) <= sp;
-					out_mem_bEnable <= opcode_saved(0); -- Loadb is opcode 51, %00110011
+--					out_mem_bEnable <= opcode_saved(0); -- Loadb is opcode 51, %00110011
 					out_mem_hEnable <= not opcode_saved(0); -- Loadh is copde 34, %00100010
-					if (in_mem_busy = '0') then
+					if in_mem_busy = '0' then
+						memAAddr(AddrBitBRAM_range) <= sp;
+						memAWrite(31 downto 16)<=(others =>'0');
+--						memAWrite(31 downto 8)<=(others =>'0');
+--						if opcode_saved(0)='1' then -- byte read; upper 24 bits should be zeroed
+--							if memARead(0)='1' then -- odd address
+--								memAWrite(7 downto 0) <= unsigned(mem_read(7 downto 0));
+--							else
+--								memAWrite(7 downto 0) <= unsigned(mem_read(15 downto 8));
+--							end if;
+--						else	-- short read; upper word should be zeroed.
+							memAWrite(15 downto 0) <= unsigned(mem_read(15 downto 0));
+--						end if;
 						state           <= State_Fetch;
 						memAWriteEnable <= '1';
-						memAWrite       <= unsigned(mem_read);
 						out_mem_bEnable	<=	'0';
 						out_mem_hEnable	<=	'0';
 					end if;
