@@ -784,8 +784,8 @@ begin
           out_mem_addr        <= std_logic_vector(memARead(maxAddrBitIncIO downto 0));
           mem_write           <= std_logic_vector(memBRead);
           state               <= State_WriteIODone;
---			 fetchneeded<='1'; -- Need to set this any time out_mem_addr changes.
-									-- (actually, not necessary for writes)
+			 fetchneeded<='1'; -- Need to set this any time out_mem_addr changes.
+									-- (actually, only necessary for writes if mem_read doesn't hold its contents)
 
 			when State_WriteIOBH =>
 				if IMPL_STOREBH=true then
@@ -797,8 +797,8 @@ begin
 					out_mem_addr        <= std_logic_vector(memARead(maxAddrBitIncIO downto 0));
 					mem_write           <= std_logic_vector(memBRead);
 					state               <= State_WriteIODone;
---					fetchneeded<='1'; -- Need to set this any time out_mem_addr changes.
-											-- (actually, not necessary for writes)
+					fetchneeded<='1'; -- Need to set this any time out_mem_addr changes.
+											-- (actually, only necessary for writes if mem_read doesn't hold its contents)
 				end if;
 
         when State_WriteIODone =>
