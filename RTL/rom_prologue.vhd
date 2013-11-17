@@ -45,7 +45,7 @@ use work.zpupkg.all;
 entity dualportram is
 generic
 	(
-		maxAddrBit : integer := maxAddrBitBRAMLimit -- Specify your actual ROM size to save LEs and unnecessary block RAM usage.
+		maxAddrBitBRAM : integer := maxAddrBitBRAMLimit -- Specify your actual ROM size to save LEs and unnecessary block RAM usage.
 	);
 port (
 	clk : in std_logic;
@@ -57,7 +57,7 @@ end dualportram;
 
 architecture arch of dualportram is
 
-type ram_type is array(natural range 0 to ((2**(maxAddrBit+1))/4)-1) of std_logic_vector(wordSize-1 downto 0);
+type ram_type is array(natural range 0 to ((2**(maxAddrBitBRAM+1))/4)-1) of std_logic_vector(wordSize-1 downto 0);
 
 shared variable ram : ram_type :=
 (
