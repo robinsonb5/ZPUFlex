@@ -40,6 +40,12 @@
 -- official policies, either expressed or implied, of the ZPU Project.
 
 
+-- WARNING - the stack bit has changed from bit 26 to bit 30.
+-- RTL code which relies upon this will need updating.
+-- Provided the linkscripts and CPU are kept in sync,
+-- this change should be essentially invisible to the user.
+
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -61,7 +67,7 @@ entity zpu_core is
 	IMPL_XOR : boolean := true; -- include xor instruction
 	EXECUTE_RAM : boolean := true; -- include support for executing code from outside the Boot ROM
 	REMAP_STACK : boolean := true; -- Map the stack / Boot ROM to an address specific by "stackbit" - default 0x04000000
-	stackbit : integer := 26; -- Map stack to 0x04000000
+	stackbit : integer := 30; -- Map stack to 0x40000000
 	maxAddrBitBRAM : integer := maxAddrBitBRAMLimit -- Specify significant bits of BRAM.
   );
   port ( 
