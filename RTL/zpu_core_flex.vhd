@@ -57,18 +57,18 @@ use work.zpupkg.all;
 
 entity zpu_core is
   generic (
-    IMPL_MULTIPLY : boolean := true; -- Self explanatory
-	IMPL_COMPARISON_SUB : boolean := true; -- Include sub and (U)lessthan(orequal)
-	IMPL_EQBRANCH : boolean := true; -- Include eqbranch and neqbranch
-	IMPL_STOREBH : boolean := true; -- Include halfword and byte writes
-	IMPL_LOADBH : boolean := true; -- Include halfword and byte reads
-	IMPL_CALL : boolean := true; -- Include call
-	IMPL_SHIFT : boolean := true; -- Include lshiftright, ashiftright and ashiftleft
-	IMPL_XOR : boolean := true; -- include xor instruction
-	EXECUTE_RAM : boolean := true; -- include support for executing code from outside the Boot ROM
-	REMAP_STACK : boolean := true; -- Map the stack / Boot ROM to an address specific by "stackbit" - default 0x04000000
-	stackbit : integer := 30; -- Map stack to 0x40000000
-	maxAddrBitBRAM : integer := maxAddrBitBRAMLimit -- Specify significant bits of BRAM.
+    IMPL_MULTIPLY : boolean; -- Self explanatory
+	IMPL_COMPARISON_SUB : boolean; -- Include sub and (U)lessthan(orequal)
+	IMPL_EQBRANCH : boolean; -- Include eqbranch and neqbranch
+	IMPL_STOREBH : boolean; -- Include halfword and byte writes
+	IMPL_LOADBH : boolean; -- Include halfword and byte reads
+	IMPL_CALL : boolean; -- Include call
+	IMPL_SHIFT : boolean; -- Include lshiftright, ashiftright and ashiftleft
+	IMPL_XOR : boolean; -- include xor instruction
+	EXECUTE_RAM : boolean; -- include support for executing code from outside the Boot ROM
+	REMAP_STACK : boolean; -- Map the stack / Boot ROM to an address specific by "stackbit" - default 0x40000000
+	stackbit : integer; -- Specify base address of stack - defaults to 0x40000000
+	maxAddrBitBRAM : integer -- Specify significant bits of BRAM.
   );
   port ( 
 		clk                 : in std_logic;
@@ -605,7 +605,7 @@ begin
               sp                                      <= sp - 1;
               memAWrite                               <= (others => DontCareValue);
 					if REMAP_STACK=true then
---						memAWrite(maxAddrBitIncIO) <='0'; -- Mark address as being in the stack
+						memAWrite(maxAddrBitIncIO) <='0'; -- Mark address as being in the stack
 						memAWrite(stackBit) <='1'; -- Mark address as being in the stack
 					end if;
 					memAWrite(maxAddrBitBRAM downto minAddrBit) <= sp;
