@@ -3,9 +3,9 @@
 
 MEMORY
 {
-  BOOT (rx) : ORIGIN = 0x04000000, LENGTH = 0x00000008 /* Boot section contains just the initial jump */
-  TRAP (rx) : ORIGIN = 0x04000008, LENGTH = 0x00000000 /* Dummy region to ensure we don't have any Initialized writable data */
-  CODE (rx) : ORIGIN = 0x04000008, LENGTH = 0x0000fff8 /* Up to the end of the first 4K */
+  BOOT (rx) : ORIGIN = 0x40000000, LENGTH = 0x00000008 /* Boot section contains just the initial jump */
+  TRAP (rx) : ORIGIN = 0x40000008, LENGTH = 0x00000000 /* Dummy region to ensure we don't have any Initialized writable data */
+  CODE (rx) : ORIGIN = 0x40000008, LENGTH = 0x0000fff8 /* Up to the end of the first 4K */
 }
 
 
