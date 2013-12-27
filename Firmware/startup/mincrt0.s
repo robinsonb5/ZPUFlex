@@ -168,6 +168,9 @@ _storeb:
 	storesp 4
 	poppc
 
+; give _premain weak linkage so it can be overriden
+.section ".text","ax"
+	.weak _premain
 _premain:
 	pushsp
 	im 4
