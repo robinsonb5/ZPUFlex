@@ -358,10 +358,12 @@ begin
 				sampledDecodedOpcode <= Decoded_StoreBH;
 			end if;
 		end if;
+		-- LOADB and LOADH don't do any bitshifting based on address- it's the supporting
+		-- SOC's responsibility to make sure the result is in the low order bits.
 		if IMPL_LOADBH=true then
---			if tOpcode(5 downto 0) = OpCode_LoadB
---				or tOpcode(5 downto 0) = OpCode_LoadH then
-			if tOpcode(5 downto 0) = OpCode_LoadH then -- Disable LoadB for now, since it doesn't yet work.
+			if tOpcode(5 downto 0) = OpCode_LoadB
+				or tOpcode(5 downto 0) = OpCode_LoadH then
+--			if tOpcode(5 downto 0) = OpCode_LoadH then -- Disable LoadB for now, since it doesn't yet work.
 				sampledDecodedOpcode <= Decoded_LoadBH;
 			end if;
 		end if;
@@ -469,8 +471,6 @@ begin
 		-- We want memAAddr to remain stable since the length of the fetch depends on external RAM.
 --      memAAddr        <= (others => DontCareValue);
       memBAddr(AddrBitBRAM_range) <= (others => DontCareValue);
-
-		opcode_saved<=opcode;
 		
       out_mem_writeEnable <= '0';
 --      out_mem_bEnable <= '0';
@@ -511,6 +511,7 @@ begin
       case state is
 
         when State_Execute =>
+			 opcode_saved<=opcode;
           state <= State_Fetch;
           -- at this point:
           -- memBRead contains opcode word
@@ -675,7 +676,7 @@ begin
 					-- We don't try and cope with half or byte reads from Stack RAM
 					 out_mem_addr(maxAddrBitIncIO downto 0)<= std_logic_vector(memARead(maxAddrBitIncIO downto 0));
                 out_mem_bEnable <= opcode(0); -- Loadb is opcode 51, %00110011
-                out_mem_hEnable <= not opcode(0); -- Loadh is copde 34, %00100010
+                out_mem_hEnable <= not opcode(0); -- Loadh is opcode 34, %00100010
                 out_mem_readEnable <= '1';
                 state              <= State_ReadIOBH;
 
@@ -760,12 +761,12 @@ begin
 				
         when State_ReadIOBH =>
 				if IMPL_LOADBH=true then
---					out_mem_bEnable <= opcode_saved(0); -- Loadb is opcode 51, %00110011
+					out_mem_bEnable <= opcode_saved(0); -- Loadb is opcode 51, %00110011
 					out_mem_hEnable <= not opcode_saved(0); -- Loadh is copde 34, %00100010
 					if in_mem_busy = '0' then
 						memAAddr(AddrBitBRAM_range) <= sp;
-						memAWrite(31 downto 16)<=(others =>'0');
---						memAWrite(31 downto 8)<=(others =>'0');
+--						memAWrite(31 downto 16)<=(others =>'0');
+						memAWrite(31 downto 8)<=(others =>'0');
 --						if opcode_saved(0)='1' then -- byte read; upper 24 bits should be zeroed
 --							if memARead(0)='1' then -- odd address
 --								memAWrite(7 downto 0) <= unsigned(mem_read(7 downto 0));
@@ -773,7 +774,10 @@ begin
 --								memAWrite(7 downto 0) <= unsigned(mem_read(15 downto 8));
 --							end if;
 --						else	-- short read; upper word should be zeroed.
-							memAWrite(15 downto 0) <= unsigned(mem_read(15 downto 0));
+						if opcode_saved(0)='0' then -- only write the top 8 bits for halfword reads
+							memAWrite(15 downto 8) <= unsigned(mem_read(15 downto 8));
+						end if;
+						memAWrite(7 downto 0) <= unsigned(mem_read(7 downto 0));
 --						end if;
 						state           <= State_Fetch;
 						memAWriteEnable <= '1';
