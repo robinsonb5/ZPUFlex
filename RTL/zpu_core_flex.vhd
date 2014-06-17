@@ -153,6 +153,7 @@ architecture behave of zpu_core is
     State_Load,
     State_FetchNext,
     State_AddSP,
+    State_AddSP2,
     State_ReadIODone,
     State_Decode,
     State_Resync,
@@ -234,6 +235,8 @@ architecture behave of zpu_core is
   signal shift_count : unsigned(4 downto 0);
   signal shift_reg : unsigned(31 downto 0);
   signal shift_direction : std_logic;
+
+  signal add_low : unsigned(17 downto 0);
   
 begin
 
@@ -470,7 +473,7 @@ begin
 		
 		-- We want memAAddr to remain stable since the length of the fetch depends on external RAM.
 --      memAAddr        <= (others => DontCareValue);
-      memBAddr(AddrBitBRAM_range) <= (others => DontCareValue);
+--      memBAddr(AddrBitBRAM_range) <= (others => DontCareValue);
 		
       out_mem_writeEnable <= '0';
 --      out_mem_bEnable <= '0';
@@ -499,6 +502,8 @@ begin
 			end if;
 		end if;
 
+		-- Pipelining of addition
+		add_low<=("00"&memARead(15 downto 0)) + ("00"&memBRead(15 downto 0));
 
 		if IMPL_MULTIPLY=true then
 			tMultResult := memARead * memBRead;
@@ -865,13 +870,17 @@ begin
           state           <= State_Resync;
 
 			when State_AddSP =>
-				state <= State_Add;
+				state <= State_AddSP2;
 
-        when State_Add =>
-          memAAddr(AddrBitBRAM_range) <= sp;
-          memAWriteEnable <= '1';
-          memAWrite       <= memARead + memBRead;
-          state           <= State_Fetch;
+			when State_AddSP2 =>
+              state    <= State_Add;
+
+			when State_Add =>
+				memAAddr(AddrBitBRAM_range) <= sp;
+				memAWriteEnable <= '1';
+				memAWrite(31 downto 16)<=memARead(31 downto 16)+memBRead(31 downto 16)+add_low(17 downto 16);
+				memAWrite(15 downto 0) <= add_low(15 downto 0);
+				state <= State_Fetch;
 
 			when State_Sub =>
 				memAAddr(AddrBitBRAM_range) <= sp;
