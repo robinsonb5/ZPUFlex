@@ -298,7 +298,7 @@ begin
 
   -- move out calculation of the opcode to a separate process
   -- to make things a bit easier to read
-  decodeControl : process(mem_read, pc, tOpcode_sel)
+  decodeControl : process(programword, pc, tOpcode_sel)
     variable tOpcode : std_logic_vector(OpCode_Size-1 downto 0);
   begin
 
