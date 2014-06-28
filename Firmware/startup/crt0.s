@@ -974,15 +974,6 @@ _default_inthandler:
 _inthandler_fptr:
 	.long _default_inthandler
 
-; Define weak linkage for _premain, so that it can be overridden
-	.section ".text","ax"
-	.weak _premain
-_premain:
-	im _break
-	nop
-	im main
-	poppc
-	
 ;	.data ; This is read only, so we don't really want it in a normal data section
 	.section ".rodata"
 	.balign 4,0

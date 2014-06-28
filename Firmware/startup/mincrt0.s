@@ -58,6 +58,7 @@ _savedstack:
 	.long 0
 _boot:
 	im _savedstack
+	load
 	popsp
 	im 0
 	poppc
