@@ -678,12 +678,26 @@ begin
              end if;
 				 
 				 when Decoded_LoadBH =>
-					-- We don't try and cope with half or byte reads from Stack RAM
-					 out_mem_addr(maxAddrBitIncIO downto 0)<= std_logic_vector(memARead(maxAddrBitIncIO downto 0));
-                out_mem_bEnable <= opcode(0); -- Loadb is opcode 51, %00110011
-                out_mem_hEnable <= not opcode(0); -- Loadh is opcode 34, %00100010
-                out_mem_readEnable <= '1';
-                state              <= State_ReadIOBH;
+					if REMAP_STACK=true and memARead(maxAddrBitIncIO)='0' and memARead(stackBit) = '1' then
+					-- We don't try and cope with half or byte reads from Stack RAM so fall back to emulation...
+						sp                             <= sp - 1;
+						memAWriteEnable                <= '1';
+						memAAddr(AddrBitBRAM_range)    <= sp - 1;
+						memAWrite                      <= (others => DontCareValue);
+						memAWrite(maxAddrBit downto 0) <= pc + 1;
+						-- The emulate address is:
+						--        98 7654 3210
+						-- 0000 00aa aaa0 0000
+						pc(stackbit-1 downto 0)	<= (others => '0');
+						pc(9 downto 5)				<= unsigned(opcode(4 downto 0));
+						fetchneeded<='1'; -- Need to set this any time pc changes.
+					else
+						out_mem_addr(maxAddrBitIncIO downto 0)<= std_logic_vector(memARead(maxAddrBitIncIO downto 0));
+						out_mem_bEnable <= opcode(0); -- Loadb is opcode 51, %00110011
+						out_mem_hEnable <= not opcode(0); -- Loadh is opcode 34, %00100010
+						out_mem_readEnable <= '1';
+						state              <= State_ReadIOBH;
+					end if;
 
 				when Decoded_EqNeq =>
 					sp <= sp + 1;
