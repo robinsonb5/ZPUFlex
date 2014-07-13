@@ -727,11 +727,24 @@ begin
               end if;
 
 				when Decoded_StoreBH =>
-				  if IMPL_STOREBH=true then
-					  memBAddr(AddrBitBRAM_range) <= sp + 1;
-					  sp       <= sp + 1;
-					 state <= State_WriteIOBH;
-				  end if;
+					if REMAP_STACK=true and memARead(maxAddrBitIncIO)='0' and memARead(stackBit) = '1' then
+						-- We don't try and cope with half or byte reads from Stack RAM so fall back to emulation...
+						sp                             <= sp - 1;
+						memAWriteEnable                <= '1';
+						memAAddr(AddrBitBRAM_range)    <= sp - 1;
+						memAWrite                      <= (others => DontCareValue);
+						memAWrite(maxAddrBit downto 0) <= pc + 1;
+						-- The emulate address is:
+						--        98 7654 3210
+						-- 0000 00aa aaa0 0000
+						pc(stackbit-1 downto 0)	<= (others => '0');
+						pc(9 downto 5)				<= unsigned(opcode(4 downto 0));
+						fetchneeded<='1'; -- Need to set this any time pc changes.
+					else
+						memBAddr(AddrBitBRAM_range) <= sp + 1;
+						sp       <= sp + 1;
+						state <= State_WriteIOBH;
+					end if;
 
             when Decoded_PopSP =>
               sp    <= memARead(maxAddrBitBRAM downto minAddrBit);
