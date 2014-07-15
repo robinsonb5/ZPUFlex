@@ -44,16 +44,15 @@ The switches for optional instructions are:
 There are a couple of other switches too:
 * EXECUTE_RAM - include support for executing code from outside the Boot ROM.
 * REMAP_STACK - maps the stack / Boot ROM which usually appears at 0x00000000
-  to an alternative address (0x04000000 by default).
+  to an alternative address (0x40000000 by default).
   This is useful in combination with the EXECUTE_RAM switch if you want
   to bootstrap a larger program than will fit in the BlockRAM-based Boot ROM.
 
 Finally there are a few integer parameters:
 * stackbit - sets the base address for the stack, if using REMAP_STACK mode.
   if REMAP_STACK is not set this is ignored.  The default value is 26, which
-  maps the STACK to 2**26, or 0x04000000, which leaves room for up to 64 meg
-  of RAM.  If you need to use a larger RAM, just set stackbit to something 
-  higher - but you'll need to adjust the base address in your linkscript to
-  match.
+  maps the STACK to 2**30, or 0x40000000.
+  If you adjust this, you'll need to adjust the base address in your linkscript
+  to match.
 * maxAddrBitBRAM - the highest valid address bit for the Stack RAM / ROM.
 
