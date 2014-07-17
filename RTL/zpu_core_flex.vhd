@@ -226,13 +226,14 @@ architecture behave of zpu_core is
   signal  inInterrupt        : std_logic;
 
   signal comparison_sub_result : unsigned(wordSize downto 0); -- Extra bit needed for signed comparisons
+  signal comparison_sign_mod : std_logic;
   signal comparison_eq : std_logic;
 
   signal eqbranch_zero : std_logic;
   
   signal shift_done : std_logic;
   signal shift_sign : std_logic;
-  signal shift_count : unsigned(4 downto 0);
+  signal shift_count : unsigned(5 downto 0);
   signal shift_reg : unsigned(31 downto 0);
   signal shift_direction : std_logic;
 
@@ -422,7 +423,7 @@ begin
 			comparison_eq<='0';
 		end if;
 
-		if IMPL_SHIFT=true and shift_count="00000" then
+		if IMPL_SHIFT=true and shift_count="000000" then
 			shift_done<='1';
 		else 
 			shift_done<='0';
@@ -510,7 +511,8 @@ begin
 		end if;
 
 		if IMPL_COMPARISON_SUB=true then
-			comparison_sub_result<=unsigned(memBRead(wordSize-1)&memBRead)-unsigned(memARead(wordSize-1)&memARead);
+			comparison_sub_result<=unsigned('0'&memBRead)-unsigned('0'&memARead);
+			comparison_sign_mod<=memARead(wordSize-1) xor memBRead(wordSize-1);
 		end if;
 
       case state is
@@ -764,7 +766,7 @@ begin
 				when Decoded_Shift =>
 					IF IMPL_SHIFT=true then
 						sp    <= sp + 1;
-						shift_count<=unsigned(memARead(4 downto 0));	-- 5 bit distance
+						shift_count<=unsigned(memARead(5 downto 0));	-- 6 bit distance
 						shift_reg<=memBRead;	-- 32-bit value
 						shift_direction<=opcode(0); -- 1 for left, (Opcode 43 for Ashiftleft)
 						shift_sign<=memBRead(31) and opcode(2);  -- 1 for arithmetic, (opcode 44 for Ashiftright, 42 for lshiftright)
@@ -958,12 +960,13 @@ begin
 				memAAddr(AddrBitBRAM_range) <= sp;
 				memAWriteEnable <= '1';
 				memAWrite <= (others => '0');
-				if opcode_saved(1)='1' then -- Unsigned comparison, opcodes 38, 39				
-					memAWrite(0) <= not (comparison_sub_result(wordSize-1)
-												xor (not opcode_saved(0) and comparison_eq));
-				else	-- Signed comparison, opcodes 36, 37
+				-- ulessthan: opcode 38, ulessthanorequal, 39
+				if opcode_saved(1)='1' then
 					memAWrite(0) <= not (comparison_sub_result(wordSize)
-												xor (not opcode_saved(0) and comparison_eq));
+												or (not opcode_saved(0) and comparison_eq));
+				else	-- Signed comparison, lt: 36, ult: 37
+					memAWrite(0) <= not ((comparison_sub_result(wordSize) xor comparison_sign_mod)
+												or (not opcode_saved(0) and comparison_eq));
 				end if;
 				state <= State_Fetch;
 
