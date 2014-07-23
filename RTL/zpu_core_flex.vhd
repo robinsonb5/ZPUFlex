@@ -239,6 +239,8 @@ architecture behave of zpu_core is
 
   signal add_low : unsigned(17 downto 0);
   
+	signal pcmaxbit : integer;
+  
 begin
 
   -- generate a trace file.
@@ -288,6 +290,8 @@ begin
 	
   tOpcode_sel <= to_integer(pc(minAddrBit-1 downto 0));
 
+  pcmaxbit <= stackbit-1 when REMAP_STACK=true else maxAddrBit;
+  
 	CodeFromRAM: if EXECUTE_RAM=true generate
 		inrom <='1' when pc(stackBit)='1' else '0';
 		programword <= memBRead_stdlogic when inrom='1' else mem_read;
@@ -552,7 +556,8 @@ begin
               memAWriteEnable                <= '1';
               memAWrite                      <= (others => DontCareValue);
               memAWrite(maxAddrBit downto 0) <= pc;
-              pc(stackbit-1 downto 0)	<= (others => '0');
+				  pc(pcmaxbit downto 0)	<= (others => '0');
+					
               pc(5 downto 0) <= to_unsigned(32, 6);  -- interrupt address
 				  fetchneeded<='1'; -- Need to set this any time PC changes.
               report "ZPU jumped to interrupt!" severity note;
@@ -593,7 +598,7 @@ begin
               -- The emulate address is:
               --        98 7654 3210
               -- 0000 00aa aaa0 0000
-              pc(stackbit-1 downto 0)	<= (others => '0');
+              pc(pcmaxbit downto 0)	<= (others => '0');
               pc(9 downto 5)				<= unsigned(opcode(4 downto 0));
 				  fetchneeded<='1'; -- Need to set this any time pc changes.
 
