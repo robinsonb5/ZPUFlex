@@ -673,7 +673,7 @@ begin
 
             when Decoded_Load =>
               if (REMAP_STACK=true and
-						memARead(maxAddrBitIncIO)='0' and memARead(stackBit) = '1')
+						memARead(stackbit-1)='0' and memARead(stackBit) = '1')
 --						or (REMAP_STACK=false and memARead(maxAddrBitIncIO)='0') then
 						or (REMAP_STACK=false and memARead(maxAddrBitIncIO downto maxAddrBitBRAM+1)=to_unsigned(0,maxAddrBitIncIO-maxAddrBitBRAM)) then -- Access is bound for stack RAM
 							memAAddr(AddrBitBRAM_range) <= memARead(AddrBitBRAM_range);
@@ -685,7 +685,7 @@ begin
              end if;
 				 
 				 when Decoded_LoadBH =>
-					if REMAP_STACK=true and memARead(maxAddrBitIncIO)='0' and memARead(stackBit) = '1' then
+					if REMAP_STACK=true and memARead(stackbit-1)='0' and memARead(stackBit) = '1' then
 					-- We don't try and cope with half or byte reads from Stack RAM so fall back to emulation...
 						sp                             <= sp - 1;
 						memAWriteEnable                <= '1';
@@ -725,7 +725,7 @@ begin
             when Decoded_Store =>
               memBAddr(AddrBitBRAM_range) <= sp + 1;
               sp       <= sp + 1;
-              if (REMAP_STACK=true and memARead(maxAddrBitIncIO)='0'	and memARead(stackBit) = '1')
+              if (REMAP_STACK=true and memARead(stackbit-1)='0'	and memARead(stackBit) = '1')
 --						or (REMAP_STACK=false and memARead(maxAddrBitIncIO)='0') then
 						or (REMAP_STACK=false and memARead(maxAddrBitIncIO downto maxAddrBitBRAM+1)=to_unsigned(0,maxAddrBitIncIO-maxAddrBitBRAM)) then -- Access is bound for stack RAM
                 state <= State_Store;
@@ -734,7 +734,7 @@ begin
               end if;
 
 				when Decoded_StoreBH =>
-					if REMAP_STACK=true and memARead(maxAddrBitIncIO)='0' and memARead(stackBit) = '1' then
+					if REMAP_STACK=true and memARead(stackbit-1)='0' and memARead(stackBit) = '1' then
 						-- We don't try and cope with half or byte reads from Stack RAM so fall back to emulation...
 						sp                             <= sp - 1;
 						memAWriteEnable                <= '1';
