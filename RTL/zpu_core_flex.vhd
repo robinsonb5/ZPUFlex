@@ -253,8 +253,11 @@ architecture behave of zpu_core_flex is
          end if;
       end function selectconstant;
 		
-	constant pcmaxbit : integer := selectconstant(REMAP_STACK,stackbit-1,maxAddrBitExternalRAM);
-	constant pcmaxbitincstack : integer := selectconstant(REMAP_STACK,stackbit,maxAddrBitExternalRAM);
+	constant pcmaxbit : integer := selectconstant(REMAP_STACK,stackbit-1,
+				selectconstant(EXECUTE_RAM,maxAddrBitExternalRAM,maxAddrBitBRAM));
+		
+	constant pcmaxbitincstack : integer := selectconstant(REMAP_STACK,stackbit,
+				selectconstant(EXECUTE_RAM,maxAddrBitExternalRAM,maxAddrBitBRAM));
   
 begin
 
