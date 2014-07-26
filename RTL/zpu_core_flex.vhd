@@ -51,13 +51,12 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
-use work.zpu_config.all;
 use work.zpupkg.all;
 
 
-entity zpu_core is
+entity zpu_core_flex is
   generic (
-    IMPL_MULTIPLY : boolean; -- Self explanatory
+	IMPL_MULTIPLY : boolean; -- Self explanatory
 	IMPL_COMPARISON_SUB : boolean; -- Include sub and (U)lessthan(orequal)
 	IMPL_EQBRANCH : boolean; -- Include eqbranch and neqbranch
 	IMPL_STOREBH : boolean; -- Include halfword and byte writes
@@ -68,6 +67,8 @@ entity zpu_core is
 	EXECUTE_RAM : boolean; -- include support for executing code from outside the Boot ROM
 	REMAP_STACK : boolean; -- Map the stack / Boot ROM to an address specific by "stackbit" - default 0x40000000
 	stackbit : integer; -- Specify base address of stack - defaults to 0x40000000
+	maxAddrBit : integer; -- Address up to 64 megabytes of RAM.
+	maxAddrBitExternalRAM : integer; -- Max bit for Program Counter when EXECUTE_RAM is true
 	maxAddrBitBRAM : integer -- Specify significant bits of BRAM.
   );
   port ( 
@@ -80,7 +81,7 @@ entity zpu_core is
 		in_mem_busy         : in  std_logic;
 		mem_read            : in  std_logic_vector(wordSize-1 downto 0);
 		mem_write           : out std_logic_vector(wordSize-1 downto 0);
-		out_mem_addr        : out std_logic_vector(maxAddrBitIncIO downto 0);
+		out_mem_addr        : out std_logic_vector(MaxAddrBit downto 0);
 		out_mem_writeEnable : out std_logic;
 		out_mem_bEnable : out std_logic;  -- Enable byte write
 		out_mem_hEnable : out std_logic;  -- Enable halfword write
@@ -96,15 +97,15 @@ entity zpu_core is
 		from_rom : in ZPU_FromROM;
 		to_rom : out ZPU_ToROM
 	);
-end zpu_core;
+end zpu_core_flex;
 
 
-architecture behave of zpu_core is
+architecture behave of zpu_core_flex is
 
   -- start byte address of stack. 
   -- point to top of RAM - 2*words
-  constant spStart : std_logic_vector(maxAddrBitIncIO downto 0) :=
-    std_logic_vector(to_unsigned((2**(maxAddrBitBRAM+1))-8, maxAddrBitIncIO+1));
+  constant spStart : std_logic_vector(MaxAddrBit downto 0) :=
+    std_logic_vector(to_unsigned((2**(maxAddrBitBRAM+1))-8, MaxAddrBit+1));
 
   signal memAWriteEnable : std_logic;
   signal memAAddr        : unsigned(maxAddrBitBRAM downto minAddrBit);
@@ -115,7 +116,7 @@ architecture behave of zpu_core is
   signal memBWrite       : unsigned(wordSize-1 downto 0);
   signal memBRead        : unsigned(wordSize-1 downto 0);
 
-  signal pc : unsigned(maxAddrBit downto 0);
+  signal pc : unsigned(maxAddrBit downto 0);  -- Synthesis tools should reduce this automatically
   signal sp : unsigned(maxAddrBitBRAM downto minAddrBit);
 
   -- this signal is set upon executing an IM instruction
@@ -130,8 +131,8 @@ architecture behave of zpu_core is
   signal fetchneeded : std_logic;
 
   signal trace_opcode      : std_logic_vector(7 downto 0);
-  signal trace_pc          : std_logic_vector(maxAddrBitIncIO downto 0);
-  signal trace_sp          : std_logic_vector(maxAddrBitIncIO downto minAddrBit);
+  signal trace_pc          : std_logic_vector(MaxAddrBit downto 0);
+  signal trace_sp          : std_logic_vector(MaxAddrBit downto minAddrBit);
   signal trace_topOfStack  : std_logic_vector(wordSize-1 downto 0);
   signal trace_topOfStackB : std_logic_vector(wordSize-1 downto 0);
 
@@ -238,33 +239,24 @@ architecture behave of zpu_core is
   signal shift_direction : std_logic;
 
   signal add_low : unsigned(17 downto 0);
-  
-	signal pcmaxbit : integer;
+
+
+  function selectconstant(cond : boolean;
+		int1 : integer;
+		int2 : integer)
+         return integer is
+      begin
+			if cond=true then
+            return int1;
+         else
+            return int2;
+         end if;
+      end function selectconstant;
+		
+	constant pcmaxbit : integer := selectconstant(REMAP_STACK,stackbit-1,maxAddrBitExternalRAM);
+	constant pcmaxbitincstack : integer := selectconstant(REMAP_STACK,stackbit,maxAddrBitExternalRAM);
   
 begin
-
-  -- generate a trace file.
-  -- 
-  -- This is only used in simulation to see what instructions are
-  -- executed. 
-  --
-  -- a quick & dirty regression test is then to commit trace files
-  -- to CVS and compare the latest trace file against the last known
-  -- good trace file
-  traceFileGenerate : if Generate_Trace generate
-    trace_file : trace port map (
-      clk        => clk,
-      begin_inst => begin_inst,
-      pc         => trace_pc,
-      opcode     => trace_opcode,
-      sp         => trace_sp,
-      memA       => trace_topOfStack,
-      memB       => trace_topOfStackB,
-      busy       => busy,
-      intsp      => (others => 'U')
-      );
-  end generate;
-
 
 
 	memAAddr_stdlogic  <= std_logic_vector(memAAddr(AddrBitBRAM_range));
@@ -289,8 +281,6 @@ begin
 
 	
   tOpcode_sel <= to_integer(pc(minAddrBit-1 downto 0));
-
-  pcmaxbit <= stackbit-1 when REMAP_STACK=true else maxAddrBit;
   
 	CodeFromRAM: if EXECUTE_RAM=true generate
 		inrom <='1' when pc(stackBit)='1' else '0';
@@ -485,7 +475,7 @@ begin
 --      out_mem_hEnable <= '0';
       out_mem_readEnable  <= '0';
       begin_inst          <= '0';
---      out_mem_addr        <= std_logic_vector(memARead(maxAddrBitIncIO downto 0));
+--      out_mem_addr        <= std_logic_vector(memARead(MaxAddrBit downto 0));
 --      mem_write           <= std_logic_vector(memBRead);
 
 		decodedOpcode <= sampledDecodedOpcode;
@@ -527,20 +517,10 @@ begin
           -- at this point:
           -- memBRead contains opcode word
           -- memARead contains top of stack
-          pc    <= pc + 1;
+          pc(pcmaxbitincstack downto 0)    <= pc(pcmaxbitincstack downto 0) + 1;
 			 if pc(1 downto 0)="11" then -- We fetch four bytes at a time.
 				fetchneeded<='1'; 
 			 end if;
-
-          -- trace
-          begin_inst                             <= '1';
-          trace_pc                               <= (others => '0');
-          trace_pc(maxAddrBit downto 0)          <= std_logic_vector(pc);
-          trace_opcode                           <= opcode;
-          trace_sp                               <= (others => '0');
-          trace_sp(maxAddrBitBRAM downto minAddrBit) <= std_logic_vector(sp);
-          trace_topOfStack                       <= std_logic_vector(memARead);
-          trace_topOfStackB                      <= std_logic_vector(memBRead);
 
           -- during the next cycle we'll be reading the next opcode       
           spOffset(4)          := not opcode(4);
@@ -555,7 +535,7 @@ begin
               memAAddr(AddrBitBRAM_range)    <= sp - 1;
               memAWriteEnable                <= '1';
               memAWrite                      <= (others => DontCareValue);
-              memAWrite(maxAddrBit downto 0) <= pc;
+              memAWrite(pcmaxbitincstack downto 0) <= pc(pcmaxbitincstack downto 0);
 				  pc(pcmaxbit downto 0)	<= (others => '0');
 					
               pc(5 downto 0) <= to_unsigned(32, 6);  -- interrupt address
@@ -594,7 +574,7 @@ begin
               memAWriteEnable                <= '1';
               memAAddr(AddrBitBRAM_range)    <= sp - 1;
               memAWrite                      <= (others => DontCareValue);
-              memAWrite(maxAddrBit downto 0) <= pc + 1;
+              memAWrite(pcmaxbitincstack downto 0) <= pc(pcmaxbitincstack downto 0) + 1;
               -- The emulate address is:
               --        98 7654 3210
               -- 0000 00aa aaa0 0000
@@ -618,13 +598,13 @@ begin
               sp                                      <= sp - 1;
               memAWrite                               <= (others => DontCareValue);
 					if REMAP_STACK=true then
-						memAWrite(maxAddrBitIncIO) <='0'; -- Mark address as being in the stack
+						memAWrite(MaxAddrBit) <='0'; -- Mark address as being in the stack
 						memAWrite(stackBit) <='1'; -- Mark address as being in the stack
 					end if;
 					memAWrite(maxAddrBitBRAM downto minAddrBit) <= sp;
 
             when Decoded_PopPC =>
-              pc    <= memARead(maxAddrBit downto 0);
+              pc(pcmaxbitincstack downto 0)    <= memARead(pcmaxbitincstack downto 0);
 				  fetchneeded<='1'; -- Need to set this any time PC changes.
               sp    <= sp + 1;
               state <= State_Resync;
@@ -633,7 +613,7 @@ begin
 					if IMPL_EQBRANCH=true then
 						sp    <= sp + 1;
 						if (eqbranch_zero xor opcode(0))='0' then -- eqbranch is 55, neqbranch is 56
-							pc    <= pc+memARead(maxAddrBit downto 0);
+							pc(pcmaxbit downto 0)    <= pc(pcmaxbit downto 0)+memARead(pcmaxbit downto 0);
 							fetchneeded<='1'; -- Need to set this any time PC changes.
 						end if;
 						state <= State_IncSP;
@@ -674,12 +654,12 @@ begin
             when Decoded_Load =>
               if (REMAP_STACK=true and
 						memARead(stackbit-1)='0' and memARead(stackBit) = '1')
---						or (REMAP_STACK=false and memARead(maxAddrBitIncIO)='0') then
-						or (REMAP_STACK=false and memARead(maxAddrBitIncIO downto maxAddrBitBRAM+1)=to_unsigned(0,maxAddrBitIncIO-maxAddrBitBRAM)) then -- Access is bound for stack RAM
+--						or (REMAP_STACK=false and memARead(MaxAddrBit)='0') then
+						or (REMAP_STACK=false and memARead(MaxAddrBit downto maxAddrBitBRAM+1)=to_unsigned(0,MaxAddrBit-maxAddrBitBRAM)) then -- Access is bound for stack RAM
 							memAAddr(AddrBitBRAM_range) <= memARead(AddrBitBRAM_range);
 				  else
 					 out_mem_addr(1 downto 0) <="00";
-					 out_mem_addr(maxAddrBitIncIO downto 2)<= std_logic_vector(memARead(maxAddrBitIncIO downto 2));
+					 out_mem_addr(MaxAddrBit downto 2)<= std_logic_vector(memARead(MaxAddrBit downto 2));
                 out_mem_readEnable <= '1';
                 state              <= State_ReadIO;
              end if;
@@ -691,15 +671,15 @@ begin
 						memAWriteEnable                <= '1';
 						memAAddr(AddrBitBRAM_range)    <= sp - 1;
 						memAWrite                      <= (others => DontCareValue);
-						memAWrite(maxAddrBit downto 0) <= pc + 1;
+						memAWrite(pcmaxbitincstack downto 0) <= pc(pcmaxbitincstack downto 0) + 1;
 						-- The emulate address is:
 						--        98 7654 3210
 						-- 0000 00aa aaa0 0000
-						pc(stackbit-1 downto 0)	<= (others => '0');
+						pc(pcmaxbit downto 0)	<= (others => '0');
 						pc(9 downto 5)				<= unsigned(opcode(4 downto 0));
 						fetchneeded<='1'; -- Need to set this any time pc changes.
 					else
-						out_mem_addr(maxAddrBitIncIO downto 0)<= std_logic_vector(memARead(maxAddrBitIncIO downto 0));
+						out_mem_addr(MaxAddrBit downto 0)<= std_logic_vector(memARead(MaxAddrBit downto 0));
 						out_mem_bEnable <= opcode(0); -- Loadb is opcode 51, %00110011
 						out_mem_hEnable <= not opcode(0); -- Loadh is opcode 34, %00100010
 						out_mem_readEnable <= '1';
@@ -726,8 +706,8 @@ begin
               memBAddr(AddrBitBRAM_range) <= sp + 1;
               sp       <= sp + 1;
               if (REMAP_STACK=true and memARead(stackbit-1)='0'	and memARead(stackBit) = '1')
---						or (REMAP_STACK=false and memARead(maxAddrBitIncIO)='0') then
-						or (REMAP_STACK=false and memARead(maxAddrBitIncIO downto maxAddrBitBRAM+1)=to_unsigned(0,maxAddrBitIncIO-maxAddrBitBRAM)) then -- Access is bound for stack RAM
+--						or (REMAP_STACK=false and memARead(MaxAddrBit)='0') then
+						or (REMAP_STACK=false and memARead(MaxAddrBit downto maxAddrBitBRAM+1)=to_unsigned(0,MaxAddrBit-maxAddrBitBRAM)) then -- Access is bound for stack RAM
                 state <= State_Store;
 				  else
                 state <= State_WriteIO;
@@ -740,11 +720,11 @@ begin
 						memAWriteEnable                <= '1';
 						memAAddr(AddrBitBRAM_range)    <= sp - 1;
 						memAWrite                      <= (others => DontCareValue);
-						memAWrite(maxAddrBit downto 0) <= pc + 1;
+						memAWrite(pcmaxbitincstack downto 0) <= pc(pcmaxbitincstack downto 0) + 1;
 						-- The emulate address is:
 						--        98 7654 3210
 						-- 0000 00aa aaa0 0000
-						pc(stackbit-1 downto 0)	<= (others => '0');
+						pc(pcmaxbit downto 0)	<= (others => '0');
 						pc(9 downto 5)				<= unsigned(opcode(4 downto 0));
 						fetchneeded<='1'; -- Need to set this any time pc changes.
 					else
@@ -759,13 +739,13 @@ begin
 
 				when Decoded_Call =>
 					if IMPL_CALL=true then
-						pc <= memARead(maxAddrBit downto 0); -- Set PC to value on top of stack
+						pc(pcmaxbitincstack downto 0) <= memARead(pcmaxbitincstack downto 0); -- Set PC to value on top of stack
 						fetchneeded<='1'; -- Need to set this any time PC changes.
 
 						memAWriteEnable                <= '1';
 						memAAddr(AddrBitBRAM_range)    <= sp; -- Replace stack top with PC+1
 						memAWrite                      <= (others => DontCareValue);
-						memAWrite(maxAddrBit downto 0) <= pc + 1;
+						memAWrite(pcmaxbitincstack downto 0) <= pc(pcmaxbitincstack downto 0) + 1;
 					end if;
 
 				when Decoded_Shift =>
@@ -830,7 +810,7 @@ begin
 --			 mem_writeMask <= (others => '1');
           sp                  <= sp + 1;
           out_mem_writeEnable <= '1';
-          out_mem_addr        <= std_logic_vector(memARead(maxAddrBitIncIO downto 0));
+          out_mem_addr        <= std_logic_vector(memARead(MaxAddrBit downto 0));
           mem_write           <= std_logic_vector(memBRead);
           state               <= State_WriteIODone;
 			 fetchneeded<='1'; -- Need to set this any time out_mem_addr changes.
@@ -843,7 +823,7 @@ begin
 					out_mem_writeEnable <= '1';
 					out_mem_bEnable <= not opcode_saved(0); -- storeb is opcode 52
 					out_mem_hEnable <= opcode_saved(0); -- storeh is opcode 35
-					out_mem_addr        <= std_logic_vector(memARead(maxAddrBitIncIO downto 0));
+					out_mem_addr        <= std_logic_vector(memARead(MaxAddrBit downto 0));
 					mem_write           <= std_logic_vector(memBRead);
 					state               <= State_WriteIODone;
 					fetchneeded<='1'; -- Need to set this any time out_mem_addr changes.
@@ -861,7 +841,7 @@ begin
 			 -- AMR - fetch from external RAM, not Block RAM.
 			 if EXECUTE_RAM=true then -- Selectable
 				out_mem_addr <= (others => '0');
-				out_mem_addr(maxAddrBit downto 2)<=std_logic_vector(pc(maxAddrBit downto 2));
+				out_mem_addr(pcmaxbit downto 2)<=std_logic_vector(pc(pcmaxbit downto 2));
 				out_mem_readEnable <= fetchneeded and not inrom;
 			 end if;
           -- FIXME - don't refetch if data is still valid.

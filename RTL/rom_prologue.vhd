@@ -39,7 +39,6 @@ use ieee.numeric_std.all;
 
 
 library work;
-use work.zpu_config.all;
 use work.zpupkg.all;
 
 entity dualportram is

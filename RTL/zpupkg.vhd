@@ -36,9 +36,6 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-library work;
-use work.zpu_config.all;
-
 
 package zpupkg is
 
@@ -48,15 +45,15 @@ package zpupkg is
   -- reserved for CPU. Requires trivial tweaks in toolchain/runtime
   -- libraries.
   
+  constant wordPower       : integer                      := 5;
+  -- during simulation, set this to '0' to get matching trace.txt 
+  constant DontCareValue   : std_logic                    := 'X';
+  constant maxAddrBitBRAMLimit : integer := 15; -- Address up to 64K of program ROM.  Note, this is a maximum size and the actual size will be specified in generics.
+
   constant byteBits   : integer := wordPower-3;  -- # of bits in a word that addresses bytes
---  constant ioBit      : integer := maxAddrBit+1;
---  constant stackBit	 : integer := maxAddrBitExternalRAM+1;
   constant wordSize   : integer := 2**wordPower;
   constant wordBytes  : integer := wordSize/8;
   constant minAddrBit : integer := byteBits;
-  -- configurable internal stack size. Probably going to be 16 after toolchain is done
-  constant stack_bits : integer := 5; -- not used by flex variant
---  constant stack_size : integer := 2**stack_bits; -- not used by flex variant
 
 
   ------------------------------------------------------------ 
@@ -90,37 +87,22 @@ package zpupkg is
 	end record;
 
 
-  component dram is
-    port (
-      clk             : in  std_logic;
-      areset          : in  std_logic;
-      mem_writeEnable : in  std_logic;
-      mem_readEnable  : in  std_logic;
-      mem_addr        : in  std_logic_vector(maxAddrBit downto 0);
-      mem_write       : in  std_logic_vector(wordSize-1 downto 0);
-      mem_read        : out std_logic_vector(wordSize-1 downto 0);
-      mem_busy        : out std_logic;
-      mem_writeMask   : in  std_logic_vector(wordBytes-1 downto 0)
-      );
-  end component dram;
+--  component trace is
+--    port (
+--      clk        : in std_logic;
+--      begin_inst : in std_logic;
+--      pc         : in std_logic_vector(maxAddrBitIncIO downto 0);
+--      opcode     : in std_logic_vector(7 downto 0);
+--      sp         : in std_logic_vector(maxAddrBitIncIO downto minAddrBit);
+--      memA       : in std_logic_vector(wordSize-1 downto 0);
+--      memB       : in std_logic_vector(wordSize-1 downto 0);
+--      busy       : in std_logic;
+--      intSp      : in std_logic_vector(stack_bits-1 downto 0)
+--      );
+--  end component trace;
 
 
-  component trace is
-    port (
-      clk        : in std_logic;
-      begin_inst : in std_logic;
-      pc         : in std_logic_vector(maxAddrBitIncIO downto 0);
-      opcode     : in std_logic_vector(7 downto 0);
-      sp         : in std_logic_vector(maxAddrBitIncIO downto minAddrBit);
-      memA       : in std_logic_vector(wordSize-1 downto 0);
-      memB       : in std_logic_vector(wordSize-1 downto 0);
-      busy       : in std_logic;
-      intSp      : in std_logic_vector(stack_bits-1 downto 0)
-      );
-  end component trace;
-
-
-  component zpu_core is
+  component zpu_core_flex is
   generic (
     IMPL_MULTIPLY : boolean := true; -- Self explanatory
 	 IMPL_COMPARISON_SUB : boolean := true; -- Include sub and (U)lessthan(orequal)
@@ -133,7 +115,8 @@ package zpupkg is
 	 REMAP_STACK : boolean := true; -- Map the stack / Boot ROM to 0x40000000, to allow pushsp, store to work.
 	 EXECUTE_RAM : boolean := true; -- include support for executing code from outside the Boot ROM
 	stackbit : integer := 30; -- Map stack to 0x40000000
---	maxAddrBitExternalRAM : integer := 25; -- Address up to 64 megabytes of RAM.
+	maxAddrBit : integer := 31; -- Address up to 64 megabytes of RAM.
+	maxAddrBitExternalRAM : integer := 30; -- Max bit for Program Counter when EXECUTE_RAM is true
 	maxAddrBitBRAM : integer := maxAddrBitBRAMLimit -- Specify significant bits of BRAM.
   );
     port ( 
@@ -143,7 +126,7 @@ package zpupkg is
       in_mem_busy         : in  std_logic;
       mem_read            : in  std_logic_vector(wordSize-1 downto 0);
       mem_write           : out std_logic_vector(wordSize-1 downto 0);
-      out_mem_addr        : out std_logic_vector(maxAddrBitIncIO downto 0);
+      out_mem_addr        : out std_logic_vector(maxAddrBit downto 0);
       out_mem_writeEnable : out std_logic;
       out_mem_bEnable : out std_logic;
       out_mem_hEnable : out std_logic;
@@ -154,7 +137,7 @@ package zpupkg is
 		from_rom : in ZPU_FromROM;
 		to_rom : out ZPU_ToROM
       );
-  end component zpu_core;
+  end component zpu_core_flex;
 
 
   component timer is
