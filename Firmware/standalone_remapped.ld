@@ -54,4 +54,14 @@ SECTIONS
   } 
   __bss_end__ = . ;
   _end = . ;
+	/* Debug information */
+  .debug_loc 0 : { *(.debug_loc) }
+  .debug_abbrev 0 : { *(.debug_abbrev) }
+  .debug_str 0 : { *(.debug_str) }
+  .debug_info 0 : { *(.debug_info) }
+  .debug_line 0 : { *(.debug_line) }
+  .debug_frame 0 : { *(.debug_frame) }
+  .debug_pubnames 0 : { *(.debug_pubnames) }
+  .debug_aranges 0 : { *(.debug_aranges) }
+  .comment : { *(.comment) }
 }
