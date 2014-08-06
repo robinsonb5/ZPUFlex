@@ -1,5 +1,5 @@
 
-/* Memory Definitions for a ZPU program running either from external RAM (up to 8 meg).
+/* Memory Definitions for a ZPU program running either from external RAM,
    or from unremapped Boot ROM / Stack RAM. */
 
 
@@ -52,9 +52,9 @@ SECTIONS
     *(.bss)
     *(.bss.*)
     *(COMMON)
+	__bss_end__ = . ;
+	_end = . ;
   } 
-  __bss_end__ = . ;
-  _end = . ;
 	/* Debug information */
   .debug_loc 0 : { *(.debug_loc) }
   .debug_abbrev 0 : { *(.debug_abbrev) }

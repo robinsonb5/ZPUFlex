@@ -58,8 +58,8 @@ SECTIONS
     *(.bss.*)
     *(COMMON)
     . = ALIGN(4);
+	__bss_end__ = . ;
   } >CODE
-  __bss_end__ = . ;
 	/* Debug information */
   .debug_loc 0 : { *(.debug_loc) }
   .debug_abbrev 0 : { *(.debug_abbrev) }

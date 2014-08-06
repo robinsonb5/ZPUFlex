@@ -38,9 +38,9 @@ SECTIONS
     *(.data)
     *(.data.*)
     SORT(CONSTRUCTORS)
-    . = ALIGN(4);
+	. = ALIGN(4);
+	_romend = . ;
   } 
-  _romend = . ;
 
   /* .bss section which is used for uninitialized data */
   . = ALIGN(4);
@@ -51,9 +51,9 @@ SECTIONS
     *(.bss)
     *(.bss.*)
     *(COMMON)
-  } 
-  __bss_end__ = . ;
-  _end = . ;
+	__bss_end__ = . ;
+	_end = . ;
+  }
 	/* Debug information */
   .debug_loc 0 : { *(.debug_loc) }
   .debug_abbrev 0 : { *(.debug_abbrev) }

@@ -36,9 +36,9 @@ SECTIONS
   {
     *(.rodata)
     *(.rodata.*)
-  . = ALIGN(4);
+	. = ALIGN(4);
+	_romend = . ;
   } >CODE
-  _romend = . ;
 
   /* .data section which is used for initialized data.
      Since we don't want any writable data within the ROM
@@ -61,8 +61,8 @@ SECTIONS
     *(.bss.*)
     *(COMMON)
     . = ALIGN(4);
+	__bss_end__ = . ;
   } >EXRAM
-  __bss_end__ = . ;
 	/* Debug information */
   .debug_loc 0 : { *(.debug_loc) }
   .debug_abbrev 0 : { *(.debug_abbrev) }
