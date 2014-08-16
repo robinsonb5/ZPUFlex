@@ -847,6 +847,7 @@ _pushpc:
 # offset 0x0000 0380
 	.balign 32,0
 _syscall_emulate:
+	poppc
 	.byte 0
 	
 # opcode 61

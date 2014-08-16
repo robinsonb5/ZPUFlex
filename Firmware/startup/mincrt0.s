@@ -30,7 +30,8 @@ Boston, MA 02111-1307, USA.  */
 /* Minimal startup code, usable where the core is complete enough not to require emulated instructions */
 	
 
-	.section ".fixed_vectors","ax"
+; KLUDGE!!! we remove the executable bit to avoid relaxation 
+	.section ".fixed_vectors","a"
 
 	.macro fixedim value
 			im \value
@@ -49,24 +50,56 @@ Boston, MA 02111-1307, USA.  */
 
 		.globl _start
 _start:
-		jmp _premain
-
-	.section ".text","ax"
-	.global _boot
-	.balign 4,0
-_savedstack:
-	.long 0
-_boot:
-	im _savedstack
-	load
-	popsp
-	im 0
+	im _break
+	nop
+	fixedim _premain
 	poppc
 
 	.global _break;
 _break:
 	im	_break
 	poppc ; infinite loop
+
+	.global _boot
+_boot:
+	im -1
+	popsp ;	Reset stack to 0x....ffff
+	im 0
+	poppc ; and jump to 0
+
+_default_inthandler:
+	poppc
+	.global _inthandler_fptr
+	.balign 4,0
+_inthandler_fptr:
+	.long _default_inthandler
+
+; 4 bytes wasted here.
+
+	.globl _zpu_interrupt_vector
+	.balign 32,0	; Interrupt handler must be at location 32
+_zpu_interrupt_vector:
+			im _memreg+0		; save R0
+			load
+			im _memreg+4		; save R1
+			load
+			im _memreg+8		; save R2
+			load
+	
+			fixedim	_inthandler_fptr
+			load
+			call
+			
+			im _memreg+8
+			store		; restore R2
+			im _memreg+4
+			store		; restore R1
+			im _memreg+0
+			store		; restore R0
+			poppc
+
+;	After the interrupt vector alignment's no longer critical
+	.section ".text","a"
 
 	.global _loadh
 _loadh:
@@ -94,6 +127,7 @@ _loadh:
 	
 	poppc
 
+
 	.global _loadb
 _loadb:
 	loadsp 4
@@ -119,6 +153,59 @@ _loadb:
 	storesp 8
 	
 	poppc
+
+
+	.global _storeh
+_storeh:
+	loadsp 4
+	; by not masking out bit 0, we cause a memory access error 
+	; on unaligned access
+	im ~0x2
+	and
+	load
+
+	; mask
+	im 0xffff
+	loadsp 12
+	im 3
+	and
+	fast_neg
+	im 2
+	add
+	im 3
+	ashiftleft
+	ashiftleft
+	not
+
+	and
+
+	loadsp 12
+	im 0xffff
+		
+	and
+	loadsp 12
+	im 3
+	and
+	fast_neg
+	im 2
+	add
+	im 3
+	ashiftleft
+	nop
+	ashiftleft
+	
+	or
+	
+	loadsp 8
+	im  ~0x3
+	and
+
+	store
+	
+	storesp 4
+	storesp 4
+	poppc
+
 
 /* FIXME - can do storeb in hardware */
 	.global _storeb
@@ -167,20 +254,6 @@ _storeb:
 	
 	storesp 4
 	storesp 4
-	poppc
-
-; give _premain weak linkage so it can be overriden
-.section ".text","ax"
-	.weak _premain
-_premain:
-	pushsp
-	im 4
-	add
-	im _savedstack
-	store
-	im _break
-	nop
-	fixedim main
 	poppc
 
 	.section ".rodata"
