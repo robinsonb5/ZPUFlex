@@ -22,8 +22,8 @@ various instructions.  With all these disabled, the ZPU is a little under 600
 LEs in size, but requires emulation "microcode" in the lower kilobyte of the
 program ROM.  With these instructions enabled, the ZPU takes just under 1,000
 LEs, but in combination with various GCC switches, can make do without
-emulation code; thus how you set these switches will depend on whether you're
-short of LEs or Block RAM.
+emulation code; thus how you set these switches will depend on whether you
+need to limit use of LEs or of Block RAM.
 
 With all the switches enabled the performance is surprisingly good for such
 a tiny CPU, thanks largely to the stack being in Block RAM.
@@ -50,7 +50,7 @@ There are a couple of other switches too:
 
 Finally there are a few integer parameters:
 * stackbit - sets the base address for the stack, if using REMAP_STACK mode.
-  if REMAP_STACK is not set this is ignored.  The default value is 26, which
+  if REMAP_STACK is not set this is ignored.  The default value is 30, which
   maps the STACK to 2**30, or 0x40000000.
   If you adjust this, you'll need to adjust the base address in your linkscript
   to match.
