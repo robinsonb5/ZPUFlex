@@ -101,6 +101,11 @@ package zpupkg is
 --      );
 --  end component trace;
 
+	type zpu_emulation is (
+		full,	-- Emulate all opcodes
+		minimal, -- Emulate only partial load/store, at alternative vectors 0x10-0x20
+		none -- Disable emulation entirely.
+	);
 
   component zpu_core_flex is
   generic (
@@ -109,6 +114,7 @@ package zpupkg is
 	 IMPL_EQBRANCH : boolean := true; -- Include eqbranch and neqbranch
 	 IMPL_STOREBH : boolean := true; -- Include halfword and byte writes
 	 IMPL_LOADBH : boolean := true; -- Include halfword and byte reads
+	 IMPL_EMULATION : zpu_emulation :=full; -- Use alternative emulation, supports [LOAD|STORE][B|H] only
 	 IMPL_CALL : boolean := true; -- Include call
 	 IMPL_SHIFT : boolean := true; -- Include lshiftright, ashiftright and ashiftleft
 	 IMPL_XOR : boolean := true; -- include xor instruction

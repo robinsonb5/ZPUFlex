@@ -50,14 +50,16 @@ Boston, MA 02111-1307, USA.  */
 
 		.globl _start
 _start:
-	im _break
+;	im _break
+	im 0x08
 	nop
 	fixedim _premain
 	poppc
 
 	.global _break;
-_break:
-	im	_break
+_break: ; Location 0x08
+;	im	_break
+	im 0x08
 	poppc ; infinite loop
 
 	.global _boot
@@ -67,14 +69,41 @@ _boot:
 	im 0
 	poppc ; and jump to 0
 
+
+; Alternative emulation vectors for halfword and byte operations
+	.balign 8,0
+_emulh: ; Opcode 34 (0x22)
+	.byte 0x80	; im 0
+	.byte 0xe0	; im 0x60
+	.byte 0x04	; poppc
+	nop
+;	im	_loadh
+;	poppc
+_emush: ; Opcode 35 (0x23)
+	.byte 0x80	; im 0
+	.byte 0xf5	; im 0x75
+	.byte 0x04	; poppc
+	nop
+;	im	_storeh
+;	poppc
+_emulb:
+	.byte 0x81	; im 0x80
+	.byte 0xa2	; im 0x22 -> 0xa2
+	.byte 0x04	; poppc
+	nop
+;	im	_loadb
+;	poppc
+_emusb:
+	.byte 0x81	; im 0x80
+	.byte 0xb7	; im 0x37 -> 0xb7
+	.byte 0x04	; poppc
+;	nop
+;	im	_storeb
+;	poppc
+
+
 _default_inthandler:
 	poppc
-	.global _inthandler_fptr
-	.balign 4,0
-_inthandler_fptr:
-	.long _default_inthandler
-
-; 4 bytes wasted here.
 
 	.globl _zpu_interrupt_vector
 	.balign 32,0	; Interrupt handler must be at location 32
@@ -98,11 +127,22 @@ _zpu_interrupt_vector:
 			store		; restore R0
 			poppc
 
-;	After the interrupt vector alignment's no longer critical
-	.section ".text","a"
+_inthandler_fptr:
+	.long _default_inthandler
+	.global _inthandler_fptr
 
+
+	.balign 8,0
+_mask:
+	.long 0x00ffffff
+	.long 0xff00ffff
+	.long 0xffff00ff
+	.long 0xffffff00
+
+
+	.balign 8,0
 	.global _loadh
-_loadh:
+_loadh:	; Opcode 34 (0x22), location 0x60
 	loadsp 4
 	; by not masking out bit 0, we cause a memory access error 
 	; on unaligned access
@@ -128,35 +168,8 @@ _loadh:
 	poppc
 
 
-	.global _loadb
-_loadb:
-	loadsp 4
-	im ~0x3
-	and
-	load
-
-	loadsp 8
-	im 3
-	and
-	fast_neg
-	im 3
-	add
-	; x8
-	addsp 0
-	addsp 0
-	addsp 0
-
-	lshiftright
-
-	im 0xff
-	and
-	storesp 8
-	
-	poppc
-
-
 	.global _storeh
-_storeh:
+_storeh: ; Opcode 35 (0x23), location 0x75
 	loadsp 4
 	; by not masking out bit 0, we cause a memory access error 
 	; on unaligned access
@@ -207,9 +220,35 @@ _storeh:
 	poppc
 
 
-/* FIXME - can do storeb in hardware */
+	.global _loadb
+_loadb:	; Opcode 51 (0x33), location 0xa2
+	loadsp 4
+	im ~0x3
+	and
+	load
+
+	loadsp 8
+	im 3
+	and
+	fast_neg
+	im 3
+	add
+	; x8
+	addsp 0
+	addsp 0
+	addsp 0
+
+	lshiftright
+
+	im 0xff
+	and
+	storesp 8
+	
+	poppc
+
+
 	.global _storeb
-_storeb:
+_storeb: ; Opcode 52 (0x34), location 0xb7
 	loadsp 4
 	im ~0x3
 	and
@@ -256,13 +295,11 @@ _storeb:
 	storesp 4
 	poppc
 
-	.section ".rodata"
-	.balign 4,0
-_mask:
-	.long 0x00ffffff
-	.long 0xff00ffff
-	.long 0xffff00ff
-	.long 0xffffff00
+;	After the interrupt vector alignment's no longer critical
+	.section ".text","ax"
+
+;	.section ".rodata"
+;	.balign 4,0
 
 	.section ".bss"
     .balign 4,0
