@@ -5,9 +5,9 @@
 
 MEMORY
 {
-  BOOT (rx) : ORIGIN = 0x40000000, LENGTH = 0x00000060 /* Boot section contains just the initial jump */
-  TRAP (rx) : ORIGIN = 0x40000060, LENGTH = 0x00000000 /* Dummy region to ensure we don't have any Initialized writable data */
-  CODE (rx) : ORIGIN = 0x40000060, LENGTH = 0x0000ff98 /* Up to the end of the first 4K */
+  BOOT (rx) : ORIGIN = 0x40000000, LENGTH = 0x000000e0 /* Boot section contains just the initial jump */
+/*  TRAP (rx) : ORIGIN = 0x400000e0, LENGTH = 0x00000000 *//* Dummy region to ensure we don't have any Initialized writable data */
+  CODE (rx) : ORIGIN = 0x400000e0, LENGTH = 0x0000ff98 /* Up to the end of the first 4K */
   EXRAM (rw)  : ORIGIN = 0x007ff000, LENGTH = 0x00001000 /* 4k at top end of SDRAM */
 }
 
@@ -42,7 +42,8 @@ SECTIONS
 
   /* .data section which is used for initialized data.
      Since we don't want any writable data within the ROM
-     itself, we put this stuff in a "trap" section. */
+     itself, we put this stuff in a "trap" section.
+	 This was due to a now-obsolete limitation. */
   .data :
   {
     _data = . ;
@@ -50,7 +51,8 @@ SECTIONS
     *(.data.*)
     SORT(CONSTRUCTORS)
     . = ALIGN(4);
-  } >TRAP
+/*  } >TRAP*/
+  } >CODE
 
   /* .bss section which is used for uninitialized data */
   .bss :
