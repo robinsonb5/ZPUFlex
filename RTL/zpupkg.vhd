@@ -114,6 +114,7 @@ package zpupkg is
 	 IMPL_XOR : boolean := true; -- include xor instruction
 	 REMAP_STACK : boolean := true; -- Map the stack / Boot ROM to 0x40000000, to allow pushsp, store to work.
 	 EXECUTE_RAM : boolean := true; -- include support for executing code from outside the Boot ROM
+	 CACHE : boolean := false;
 	stackbit : integer := 30; -- Map stack to 0x40000000
 	maxAddrBit : integer := 31; -- Address up to 64 megabytes of RAM.
 	maxAddrBitExternalRAM : integer := 30; -- Max bit for Program Counter when EXECUTE_RAM is true
