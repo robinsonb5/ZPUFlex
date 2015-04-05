@@ -286,7 +286,8 @@ begin
 	memBRead <= unsigned(memBRead_stdlogic);
 
 	
-  tOpcode_sel <= (not fetchneeded) & std_logic_vector(pc(minAddrBit-1 downto 0));
+	tOpcode_sel(2) <= '1' when CACHE=true and fetchneeded='0' else '0';
+	tOpcode_sel(1 downto 0) <= std_logic_vector(pc(minAddrBit-1 downto 0));
   
 	CodeFromRAM: if EXECUTE_RAM=true generate
 		inrom <='1' when pc(stackBit)='1' else '0';
@@ -535,7 +536,7 @@ begin
 
 			 fetchneeded<='1'; 
 				state <= State_Fetch;
-			 if CACHE=true then
+			 if CACHE=true or inrom='0' then
 				 if pc(1 downto 0)/="11" then -- We fetch four bytes at a time.
 					fetchneeded<='0';
 					state <= State_Decode;
@@ -972,10 +973,11 @@ begin
           memBAddr(AddrBitBRAM_range) <= sp + 1;
 			 if fetchneeded='1' then
 				cachedprogramword<=programword;
+				fetchneeded<='0';
 			end if;
-			if CACHE=true then
-			 fetchneeded<='0';
-			end if;
+--			if CACHE=true then
+--			 fetchneeded<='0';
+--			end if;
           state    <= State_Execute;
 
         when State_Store =>
