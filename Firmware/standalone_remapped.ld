@@ -19,6 +19,16 @@ SECTIONS
   {
     *(.text)                   /* remaining code */
     *(.text.*)                   /* remaining code */
+	. = ALIGN(4);
+	__ctors_start__ = . ;
+	*(.ctors)
+	*(.ctors.*)
+	__ctors_end__ = . ;
+    . = ALIGN(4);
+	__dtors_start__ = . ;
+	*(.dtors)
+	*(.dtors.*)
+	__dtors_end__ = . ;
   } 
 
   /* .rodata section which is used for read-only data (constants) */
