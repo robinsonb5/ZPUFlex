@@ -57,6 +57,7 @@ _start:
 
 	.global _break;
 _break:
+	breakpoint
 	im	_break
 	poppc ; infinite loop
 
