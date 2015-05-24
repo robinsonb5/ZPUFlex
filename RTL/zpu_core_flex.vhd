@@ -730,6 +730,7 @@ begin
 				  else
 					 out_mem_addr(1 downto 0) <="00";
 					 out_mem_addr(MaxAddrBit downto 2)<= std_logic_vector(memARead(MaxAddrBit downto 2));
+					-- FIXME trigger some kind of alignment exception if memARead(1 downto 0) are not zero
                 out_mem_readEnable <= '1';
                 state              <= State_ReadIO;
              end if;
@@ -896,7 +897,9 @@ begin
 --			 mem_writeMask <= (others => '1');
           sp                  <= sp + 1;
           out_mem_writeEnable <= '1';
-          out_mem_addr        <= std_logic_vector(memARead(MaxAddrBit downto 0));
+			out_mem_addr(1 downto 0) <= "00";
+          out_mem_addr(MaxAddrBit downto 2) <= std_logic_vector(memARead(MaxAddrBit downto 2));
+			-- FIXME - trigger and alignment exception if memARead(1 downto 0) are not zero.
           mem_write           <= std_logic_vector(memBRead);
           state               <= State_WriteIODone;
 			 fetchneeded<='1'; -- Need to set this any time out_mem_addr changes.
