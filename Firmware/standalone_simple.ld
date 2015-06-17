@@ -22,13 +22,13 @@ SECTIONS
     *(.text.*)                   /* remaining code */
 	. = ALIGN(4);
 	__ctors_start__ = . ;
-	*(.ctors)
-	*(.ctors.*)
+	KEEP(*(.ctors))
+	KEEP(*(.ctors.*))
 	__ctors_end__ = . ;
     . = ALIGN(4);
 	__dtors_start__ = . ;
-	*(.dtors)
-	*(.dtors.*)
+	KEEP(*(.dtors))
+	KEEP(*(.dtors.*))
 	__dtors_end__ = . ;
   } 
 
