@@ -374,7 +374,7 @@ begin
 		-- LOADB and LOADH don't do any bitshifting based on address- it's the supporting
 		-- SOC's responsibility to make sure the result is in the low order bits.
 		if IMPL_LOADBH=true then
-			if tOpcode(5 downto 0) = OpCode_LoadB
+			if tOpcode(5 downto 0) = OpCode_LoadB 
 				or tOpcode(5 downto 0) = OpCode_LoadH then
 --			if tOpcode(5 downto 0) = OpCode_LoadH then -- Disable LoadB for now, since it doesn't yet work.
 				sampledDecodedOpcode <= Decoded_LoadBH;
@@ -581,12 +581,6 @@ begin
                 memAWrite(6 downto 0)          <= unsigned(opcode(6 downto 0));
 					memBAddr(AddrBitBRAM_range) <= sp+1;
               end if;  -- idim_flag
---				state <= State_Decode;
---	  			 if pc(1 downto 0)="11" then -- We fetch four bytes at a time.
---					fetchneeded<='1'; 
---					state <= State_Fetch;
---				 end if;
-
 
             when Decoded_StoreSP =>
               memBWriteEnable <= '1';
@@ -636,11 +630,6 @@ begin
 						memAWrite(stackBit) <='1'; -- Mark address as being in the stack
 					end if;
 					memAWrite(maxAddrBitBRAM downto minAddrBit) <= sp;
---				state <= State_Decode;
---	  			 if pc(1 downto 0)="11" then -- We fetch four bytes at a time.
---					fetchneeded<='1'; 
---					state <= State_Fetch;
---				 end if;
 
             when Decoded_PopPC =>
               pc(pcmaxbitincstack downto 0)    <= memARead(pcmaxbitincstack downto 0);
@@ -682,26 +671,13 @@ begin
 				 memAWriteEnable <= '1';
 				 memAWrite       <= memARead or memBRead;
               sp    <= sp + 1;
---              state <= State_Or;
---				state <= State_Decode;
---	  			 if pc(1 downto 0)="11" then -- We fetch four bytes at a time.
---					fetchneeded<='1'; 
---					state <= State_Fetch;
---				 end if;
 
             when Decoded_And =>
 				 memAAddr(AddrBitBRAM_range) <= sp+1;
 				 memBAddr(AddrBitBRAM_range) <= sp+2;
 				 memAWriteEnable <= '1';
 				 memAWrite       <= memARead and memBRead;
---				 state           <= State_Fetch;
               sp    <= sp + 1;
---              state <= State_And;
---				state <= State_Decode;
---	  			 if pc(1 downto 0)="11" then -- We fetch four bytes at a time.
---					fetchneeded<='1'; 
---					state <= State_Fetch;
---				 end if;
 
             when Decoded_Xor =>
 				 memAAddr(AddrBitBRAM_range) <= sp+1;
@@ -709,12 +685,6 @@ begin
 				 memAWriteEnable <= '1';
 				 memAWrite       <= memARead xor memBRead;
               sp    <= sp + 1;
---              state <= State_Xor;
---				state <= State_Decode;
---	  			 if pc(1 downto 0)="11" then -- We fetch four bytes at a time.
---					fetchneeded<='1'; 
---					state <= State_Fetch;
---				 end if;
 
 				  when Decoded_Mult =>
               sp    <= sp + 1;
@@ -767,11 +737,6 @@ begin
               memBAddr(AddrBitBRAM_range)             <= sp+1;
               memAWriteEnable <= '1';
               memAWrite       <= not memARead;
---				state <= State_Decode;
---	  			 if pc(1 downto 0)="11" then -- We fetch four bytes at a time.
---					fetchneeded<='1'; 
---					state <= State_Fetch;
---				 end if;
 
             when Decoded_Flip =>
               memAAddr(AddrBitBRAM_range)             <= sp;
@@ -780,11 +745,6 @@ begin
               for i in 0 to wordSize-1 loop
                 memAWrite(i) <= memARead(wordSize-1-i);
               end loop;
---				state <= State_Decode;
---	  			 if pc(1 downto 0)="11" then -- We fetch four bytes at a time.
---					fetchneeded<='1'; 
---					state <= State_Fetch;
---				 end if;
 
             when Decoded_Store =>
               memBAddr(AddrBitBRAM_range) <= sp + 1;
@@ -862,7 +822,9 @@ begin
 					memAWriteEnable <= '1';
 					memAWrite       <= unsigned(mem_read);
 				end if;
-				fetchneeded<='1'; -- Need to set this any time out_mem_addr changes.
+				if CACHE=false then
+					fetchneeded<='1'; -- Need to set this any time out_mem_addr changes.
+				end if;
 
 				
         when State_ReadIOBH =>
@@ -890,7 +852,9 @@ begin
 						out_mem_bEnable	<=	'0';
 						out_mem_hEnable	<=	'0';
 					end if;
-					fetchneeded<='1'; -- Need to set this any time out_mem_addr changes.
+					if CACHE=false then
+						fetchneeded<='1'; -- Need to set this any time out_mem_addr changes.
+					end if;
 				end if;
 
 		 when State_WriteIO =>
@@ -902,7 +866,9 @@ begin
 			-- FIXME - trigger and alignment exception if memARead(1 downto 0) are not zero.
           mem_write           <= std_logic_vector(memBRead);
           state               <= State_WriteIODone;
-			 fetchneeded<='1'; -- Need to set this any time out_mem_addr changes.
+			if CACHE=false then
+				fetchneeded<='1'; -- Need to set this any time out_mem_addr changes.
+			end if;
 									-- (actually, only necessary for writes if mem_read doesn't hold its contents)
 
 			when State_WriteIOBH =>
@@ -915,7 +881,9 @@ begin
 					out_mem_addr        <= std_logic_vector(memARead(MaxAddrBit downto 0));
 					mem_write           <= std_logic_vector(memBRead);
 					state               <= State_WriteIODone;
-					fetchneeded<='1'; -- Need to set this any time out_mem_addr changes.
+					if CACHE=false then
+						fetchneeded<='1'; -- Need to set this any time out_mem_addr changes.
+					end if;
 											-- (actually, only necessary for writes if mem_read doesn't hold its contents)
 				end if;
 
@@ -978,9 +946,6 @@ begin
 				cachedprogramword<=programword;
 				fetchneeded<='0';
 			end if;
---			if CACHE=true then
---			 fetchneeded<='0';
---			end if;
           state    <= State_Execute;
 
         when State_Store =>
@@ -1027,18 +992,6 @@ begin
 					state <= State_Fetch;
 				end if;
 
---		  when State_Or =>
---          memAAddr(AddrBitBRAM_range) <= sp;
---          memAWriteEnable <= '1';
---          memAWrite       <= memARead or memBRead;
---          state           <= State_Fetch;
---
---		  when State_Xor =>
---          memAAddr(AddrBitBRAM_range) <= sp;
---          memAWriteEnable <= '1';
---          memAWrite       <= memARead xor memBRead;
---          state           <= State_Fetch;
-
 			 when State_IncSP =>
 				sp<=sp+1;
 				state <= State_Resync;
@@ -1050,12 +1003,6 @@ begin
 			 if fetchneeded='1' then
 				state<=State_Fetch;
 			 end if;
-
---        when State_And =>
---          memAAddr(AddrBitBRAM_range) <= sp;
---          memAWriteEnable <= '1';
---          memAWrite       <= memARead and memBRead;
---          state           <= State_Fetch;
 
 		  when State_EqNeq =>
 				memAAddr(AddrBitBRAM_range) <= sp;
