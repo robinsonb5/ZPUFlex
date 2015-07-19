@@ -73,20 +73,18 @@ entity zpu_core_flex is
 	maxAddrBitBRAM : integer -- Specify significant bits of BRAM.
   );
   port ( 
-		clk                 : in std_logic;
-		-- asynchronous reset signal
-		reset               : in std_logic;
-		-- this particular implementation of the ZPU does not
-		-- have a clocked enable signal
-		enable              : in  std_logic;
-		in_mem_busy         : in  std_logic;
-		mem_read            : in  std_logic_vector(wordSize-1 downto 0);
-		mem_write           : out std_logic_vector(wordSize-1 downto 0);
-		out_mem_addr        : out std_logic_vector(MaxAddrBit downto 0);
-		out_mem_writeEnable : out std_logic;
-		out_mem_bEnable : out std_logic;  -- Enable byte write
-		out_mem_hEnable : out std_logic;  -- Enable halfword write
-		out_mem_readEnable  : out std_logic;
+		-- Wishbone signals
+		clk_i				: in std_logic;
+		rst_i				: in std_logic;
+		ack_i				: in  std_logic;
+		dat_i				: in  std_logic_vector(wordSize-1 downto 0);
+		dat_o				: out std_logic_vector(wordSize-1 downto 0);
+		adr_o				: out std_logic_vector(MaxAddrBit downto 0);
+		cyc_o				: out std_logic;
+		sel_o				: out std_logic_vector(wordBytes-1 downto 0);
+		stb_o				: out std_logic;
+		we_o				: out std_logic;
+
 		-- Set to one to jump to interrupt vector
 		-- The ZPU will communicate with the hardware that caused the
 		-- interrupt via memory mapped IO or the interrupt flag can
@@ -95,6 +93,7 @@ entity zpu_core_flex is
 		-- Signal that the break instruction is executed, normally only used
 		-- in simulation to stop simulation
 		break               : out std_logic;
+		-- Local bus for stack RAM / boot ROM.
 		from_rom : in ZPU_FromROM;
 		to_rom : out ZPU_ToROM
 	);
@@ -420,7 +419,7 @@ begin
   end process;
 
 
-  opcodeControl: process(clk, reset)
+  opcodeControl: process(clk_i, rst_i)
     variable spOffset : unsigned(4 downto 0);
     variable tMultResult    : unsigned(wordSize*2-1 downto 0);
   begin
@@ -445,8 +444,10 @@ begin
 		eqbranch_zero <='1';
 	end if;
 
+	cyc_o<=stb_o; -- Tie Cycle signal to strobe signal
  
-    if reset = '1' then
+	if rising_edge(clk_i) then
+    if rst_i = '1' then -- Synchronous reset
       state               <= State_Resync;
       break               <= '0';
       sp                  <= unsigned(spStart(maxAddrBitBRAM downto minAddrBit));
@@ -460,38 +461,21 @@ begin
       memBAddr(AddrBitBRAM_range) <= (others => '0');
       memAWriteEnable     <= '0';
       memBWriteEnable     <= '0';
-      out_mem_writeEnable <= '0';
-      out_mem_readEnable  <= '0';
-      out_mem_bEnable <= '0';
-      out_mem_hEnable <= '0';
+      sel_o<=(others=>'0');
       memAWrite           <= (others => '0');
       memBWrite           <= (others => '0');
       inInterrupt         <= '0';
 		fetchneeded			  <= '1';
-
-    elsif (clk'event and clk = '1') then
+    else
       memAWriteEnable <= '0';
       memBWriteEnable <= '0';
-      -- This saves ca. 100 LUT's, by explicitly declaring that the
-      -- memAWrite can be left at whatever value if memAWriteEnable is
-      -- not set.
       memAWrite       <= (others => DontCareValue);
       memBWrite       <= (others => DontCareValue);
---    out_mem_addr    <= (others => DontCareValue);
---    mem_write       <= (others => DontCareValue);
       spOffset        := (others => DontCareValue);
 		
-		-- We want memAAddr to remain stable since the length of the fetch depends on external RAM.
---      memAAddr        <= (others => DontCareValue);
---      memBAddr(AddrBitBRAM_range) <= (others => DontCareValue);
-		
-      out_mem_writeEnable <= '0';
---      out_mem_bEnable <= '0';
---      out_mem_hEnable <= '0';
-      out_mem_readEnable  <= '0';
+      we_o <= '0';
+      stb_o <= '0';
       begin_inst          <= '0';
---      out_mem_addr        <= std_logic_vector(memARead(MaxAddrBit downto 0));
---      mem_write           <= std_logic_vector(memBRead);
 
 		decodedOpcode <= sampledDecodedOpcode;
 		opcode <= sampledOpcode;
@@ -698,13 +682,15 @@ begin
 							memAAddr(AddrBitBRAM_range) <= memARead(AddrBitBRAM_range);
 						state<=State_Fetch;
 				  else
-					 out_mem_addr(1 downto 0) <="00";
-					 out_mem_addr(MaxAddrBit downto 2)<= std_logic_vector(memARead(MaxAddrBit downto 2));
+					 add_o <="00";
+					 add_o(MaxAddrBit downto 2)<= std_logic_vector(memARead(MaxAddrBit downto 2));
 					-- FIXME trigger some kind of alignment exception if memARead(1 downto 0) are not zero
-                out_mem_readEnable <= '1';
-                state              <= State_ReadIO;
+                stb_o <= '1';
+					 we_o<='0';
+					 sel_o <= (others=>'1');
+                state <= State_ReadIO;
              end if;
-				 
+
 				 when Decoded_LoadBH =>
 					if REMAP_STACK=true and memARead(stackbit-1)='0' and memARead(stackBit) = '1' then
 					-- We don't try and cope with half or byte reads from Stack RAM so fall back to emulation...
@@ -721,10 +707,14 @@ begin
 						fetchneeded<='1'; -- Need to set this any time pc changes.
 						state<=State_Fetch;
 					else
-						out_mem_addr(MaxAddrBit downto 0)<= std_logic_vector(memARead(MaxAddrBit downto 0));
-						out_mem_bEnable <= opcode(0); -- Loadb is opcode 51, %00110011
-						out_mem_hEnable <= not opcode(0); -- Loadh is opcode 34, %00100010
-						out_mem_readEnable <= '1';
+						add_o(MaxAddrBit downto 0)<= std_logic_vector(memARead(MaxAddrBit downto 0));
+						sel(3 downto 2)<="00";
+						sel(1)<= not opcode(0);
+						sel(0)<= '1';
+						we_o<='0';
+--						out_mem_bEnable <= opcode(0); -- Loadb is opcode 51, %00110011
+--						out_mem_hEnable <= not opcode(0); -- Loadh is opcode 34, %00100010
+						stb_o<='1';
 						state              <= State_ReadIOBH;
 					end if;
 
@@ -817,10 +807,11 @@ begin
 
         when State_ReadIO =>
 				memAAddr(AddrBitBRAM_range) <= sp;
-				if (in_mem_busy = '0') then
+				stb_o<='1';
+				if (ack_i = '1') then
 					state           <= State_Fetch;
 					memAWriteEnable <= '1';
-					memAWrite       <= unsigned(mem_read);
+					memAWrite       <= unsigned(dat_i);
 				end if;
 				if CACHE=false then
 					fetchneeded<='1'; -- Need to set this any time out_mem_addr changes.
@@ -829,28 +820,21 @@ begin
 				
         when State_ReadIOBH =>
 				if IMPL_LOADBH=true then
-					out_mem_bEnable <= opcode_saved(0); -- Loadb is opcode 51, %00110011
-					out_mem_hEnable <= not opcode_saved(0); -- Loadh is copde 34, %00100010
-					if in_mem_busy = '0' then
+					
+--					out_mem_bEnable <= opcode_saved(0); -- Loadb is opcode 51, %00110011
+--					out_mem_hEnable <= not opcode_saved(0); -- Loadh is copde 34, %00100010
+					if ack='1' then
 						memAAddr(AddrBitBRAM_range) <= sp;
---						memAWrite(31 downto 16)<=(others =>'0');
 						memAWrite(31 downto 8)<=(others =>'0');
---						if opcode_saved(0)='1' then -- byte read; upper 24 bits should be zeroed
---							if memARead(0)='1' then -- odd address
---								memAWrite(7 downto 0) <= unsigned(mem_read(7 downto 0));
---							else
---								memAWrite(7 downto 0) <= unsigned(mem_read(15 downto 8));
---							end if;
---						else	-- short read; upper word should be zeroed.
 						if opcode_saved(0)='0' then -- only write the top 8 bits for halfword reads
-							memAWrite(15 downto 8) <= unsigned(mem_read(15 downto 8));
+							memAWrite(15 downto 8) <= unsigned(dat_i(15 downto 8));
 						end if;
-						memAWrite(7 downto 0) <= unsigned(mem_read(7 downto 0));
+						memAWrite(7 downto 0) <= unsigned(dat_i(7 downto 0));
 --						end if;
 						state           <= State_Fetch;
 						memAWriteEnable <= '1';
-						out_mem_bEnable	<=	'0';
-						out_mem_hEnable	<=	'0';
+--						out_mem_bEnable	<=	'0';
+--						out_mem_hEnable	<=	'0';
 					end if;
 					if CACHE=false then
 						fetchneeded<='1'; -- Need to set this any time out_mem_addr changes.
@@ -858,14 +842,16 @@ begin
 				end if;
 
 		 when State_WriteIO =>
---			 mem_writeMask <= (others => '1');
-          sp                  <= sp + 1;
-          out_mem_writeEnable <= '1';
-			out_mem_addr(1 downto 0) <= "00";
-          out_mem_addr(MaxAddrBit downto 2) <= std_logic_vector(memARead(MaxAddrBit downto 2));
+--				mem_writeMask <= (others => '1');
+			sp                  <= sp + 1;
+			stb_o<='1';
+			we_o<='1';
+			sel<=(others=>'1');
+			add_o(1 downto 0) <= "00";
+			add_o(MaxAddrBit downto 2) <= std_logic_vector(memARead(MaxAddrBit downto 2));
 			-- FIXME - trigger and alignment exception if memARead(1 downto 0) are not zero.
-          mem_write           <= std_logic_vector(memBRead);
-          state               <= State_WriteIODone;
+			dat_o <= std_logic_vector(memBRead);
+			state <= State_WriteIODone;
 			if CACHE=false then
 				fetchneeded<='1'; -- Need to set this any time out_mem_addr changes.
 			end if;
@@ -875,31 +861,36 @@ begin
 				if IMPL_STOREBH=true then
 --					mem_writeMask <= (others => '1');
 					sp                  <= sp + 1;
-					out_mem_writeEnable <= '1';
-					out_mem_bEnable <= not opcode_saved(0); -- storeb is opcode 52
-					out_mem_hEnable <= opcode_saved(0); -- storeh is opcode 35
-					out_mem_addr        <= std_logic_vector(memARead(MaxAddrBit downto 0));
-					mem_write           <= std_logic_vector(memBRead);
-					state               <= State_WriteIODone;
+					stb_o<='1';
+					we_o<='1';
+					sel(3 downto 2)<="11";
+					sel(1)<='1';
+					sel(0)<=opcode_saved(0);
+--					out_mem_bEnable <= not opcode_saved(0); -- storeb is opcode 52
+--					out_mem_hEnable <= opcode_saved(0); -- storeh is opcode 35
+					add_o <= std_logic_vector(memARead(MaxAddrBit downto 0));
+					dat_o <= std_logic_vector(memBRead);
+					state <= State_WriteIODone;
 					if CACHE=false then
 						fetchneeded<='1'; -- Need to set this any time out_mem_addr changes.
 					end if;
-											-- (actually, only necessary for writes if mem_read doesn't hold its contents)
+					-- (actually, only necessary for writes if mem_read doesn't hold its contents)
 				end if;
 
         when State_WriteIODone =>
-          if (in_mem_busy = '0') then
+			 stb_o<='1';
+			 we_o<='1';
+          if (ack_i = '1') then
             state <= State_Resync;
-				out_mem_bEnable	<=	'0';
-				out_mem_hEnable	<=	'0';
           end if;
 
         when State_Fetch =>
 			 -- AMR - fetch from external RAM, not Block RAM.
 				 if EXECUTE_RAM=true then -- Selectable
-					out_mem_addr <= (others => '0');
-					out_mem_addr(pcmaxbit downto 2)<=std_logic_vector(pc(pcmaxbit downto 2));
-					out_mem_readEnable <= fetchneeded and not inrom;
+					mem_o <= (others => '0');
+					mem_o(pcmaxbit downto 2)<=std_logic_vector(pc(pcmaxbit downto 2));
+					stb_o<=fetchneeded and not inrom;
+--					out_mem_readEnable <= fetchneeded and not inrom;
 				 end if;
 				 -- FIXME - don't refetch if data is still valid.
 
@@ -1050,9 +1041,8 @@ begin
 
       end case;  -- state
       
-    end if;  -- reset, enable
+    end if;  -- rst_i, enable
+	 end if; -- clk_i
   end process;
-
-
 
 end behave;

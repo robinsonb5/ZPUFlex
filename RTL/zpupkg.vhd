@@ -121,18 +121,18 @@ package zpupkg is
 	maxAddrBitBRAM : integer := maxAddrBitBRAMLimit -- Specify significant bits of BRAM.
   );
     port ( 
-      clk                 : in  std_logic;
-      reset               : in  std_logic;
-      enable              : in  std_logic := '1'; 
-      in_mem_busy         : in  std_logic;
-      mem_read            : in  std_logic_vector(wordSize-1 downto 0);
-      mem_write           : out std_logic_vector(wordSize-1 downto 0);
-      out_mem_addr        : out std_logic_vector(maxAddrBit downto 0);
-      out_mem_writeEnable : out std_logic;
-      out_mem_bEnable : out std_logic;
-      out_mem_hEnable : out std_logic;
-      out_mem_readEnable  : out std_logic;
---      mem_writeMask       : out std_logic_vector(wordBytes-1 downto 0);
+		-- Wishbone signals
+		clk_i				: in std_logic;
+		rst_i				: in std_logic;
+		ack_i				: in  std_logic;
+		dat_i				: in  std_logic_vector(wordSize-1 downto 0);
+		dat_o				: out std_logic_vector(wordSize-1 downto 0);
+		adr_o				: out std_logic_vector(MaxAddrBit downto 0);
+		cyc_o				: out std_logic;
+		sel_o				: out std_logic_vector(wordBytes-1 downto 0);
+		stb_o				: out std_logic;
+		we_o				: out std_logic;
+
       interrupt           : in  std_logic := '0';
       break               : out std_logic;
 		from_rom : in ZPU_FromROM;
