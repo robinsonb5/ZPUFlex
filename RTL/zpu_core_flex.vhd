@@ -102,6 +102,8 @@ end zpu_core_flex;
 
 architecture behave of zpu_core_flex is
 
+	signal stb : std_logic; -- Wishbone strobe
+
   -- start byte address of stack. 
   -- point to top of RAM - 2*words
   constant spStart : std_logic_vector(MaxAddrBit downto 0) :=
@@ -290,7 +292,7 @@ begin
   
 	CodeFromRAM: if EXECUTE_RAM=true generate
 		inrom <='1' when pc(stackBit)='1' else '0';
-		programword <= memBRead_stdlogic when inrom='1' else mem_read;
+		programword <= memBRead_stdlogic when inrom='1' else dat_i;
 	end generate;
 	CodeFromRAM2: if EXECUTE_RAM=false generate
 		programword <= memBRead_stdlogic;
@@ -444,8 +446,9 @@ begin
 		eqbranch_zero <='1';
 	end if;
 
-	cyc_o<=stb_o; -- Tie Cycle signal to strobe signal
- 
+	cyc_o<=stb; -- Tie Cycle signal to strobe signal
+	stb_o<=stb;
+	
 	if rising_edge(clk_i) then
     if rst_i = '1' then -- Synchronous reset
       state               <= State_Resync;
@@ -474,7 +477,7 @@ begin
       spOffset        := (others => DontCareValue);
 		
       we_o <= '0';
-      stb_o <= '0';
+      stb <= '0';
       begin_inst          <= '0';
 
 		decodedOpcode <= sampledDecodedOpcode;
@@ -682,10 +685,10 @@ begin
 							memAAddr(AddrBitBRAM_range) <= memARead(AddrBitBRAM_range);
 						state<=State_Fetch;
 				  else
-					 add_o <="00";
-					 add_o(MaxAddrBit downto 2)<= std_logic_vector(memARead(MaxAddrBit downto 2));
+					 adr_o(1 downto 0) <="00";
+					 adr_o(MaxAddrBit downto 2)<= std_logic_vector(memARead(MaxAddrBit downto 2));
 					-- FIXME trigger some kind of alignment exception if memARead(1 downto 0) are not zero
-                stb_o <= '1';
+                stb <= '1';
 					 we_o<='0';
 					 sel_o <= (others=>'1');
                 state <= State_ReadIO;
@@ -707,14 +710,14 @@ begin
 						fetchneeded<='1'; -- Need to set this any time pc changes.
 						state<=State_Fetch;
 					else
-						add_o(MaxAddrBit downto 0)<= std_logic_vector(memARead(MaxAddrBit downto 0));
-						sel(3 downto 2)<="00";
-						sel(1)<= not opcode(0);
-						sel(0)<= '1';
+						adr_o(MaxAddrBit downto 0)<= std_logic_vector(memARead(MaxAddrBit downto 0));
+						sel_o(3 downto 2)<="00";
+						sel_o(1)<= not opcode(0);
+						sel_o(0)<= '1';
 						we_o<='0';
 --						out_mem_bEnable <= opcode(0); -- Loadb is opcode 51, %00110011
 --						out_mem_hEnable <= not opcode(0); -- Loadh is opcode 34, %00100010
-						stb_o<='1';
+						stb<='1';
 						state              <= State_ReadIOBH;
 					end if;
 
@@ -807,7 +810,7 @@ begin
 
         when State_ReadIO =>
 				memAAddr(AddrBitBRAM_range) <= sp;
-				stb_o<='1';
+				stb<='1';
 				if (ack_i = '1') then
 					state           <= State_Fetch;
 					memAWriteEnable <= '1';
@@ -844,11 +847,11 @@ begin
 		 when State_WriteIO =>
 --				mem_writeMask <= (others => '1');
 			sp                  <= sp + 1;
-			stb_o<='1';
+			stb<='1';
 			we_o<='1';
-			sel<=(others=>'1');
-			add_o(1 downto 0) <= "00";
-			add_o(MaxAddrBit downto 2) <= std_logic_vector(memARead(MaxAddrBit downto 2));
+			sel_o<=(others=>'1');
+			adr_o(1 downto 0) <= "00";
+			adr_o(MaxAddrBit downto 2) <= std_logic_vector(memARead(MaxAddrBit downto 2));
 			-- FIXME - trigger and alignment exception if memARead(1 downto 0) are not zero.
 			dat_o <= std_logic_vector(memBRead);
 			state <= State_WriteIODone;
@@ -861,14 +864,14 @@ begin
 				if IMPL_STOREBH=true then
 --					mem_writeMask <= (others => '1');
 					sp                  <= sp + 1;
-					stb_o<='1';
+					stb<='1';
 					we_o<='1';
-					sel(3 downto 2)<="11";
-					sel(1)<='1';
-					sel(0)<=opcode_saved(0);
+					sel_o(3 downto 2)<="11";
+					sel_o(1)<='1';
+					sel_o(0)<=opcode_saved(0);
 --					out_mem_bEnable <= not opcode_saved(0); -- storeb is opcode 52
 --					out_mem_hEnable <= opcode_saved(0); -- storeh is opcode 35
-					add_o <= std_logic_vector(memARead(MaxAddrBit downto 0));
+					adr_o <= std_logic_vector(memARead(MaxAddrBit downto 0));
 					dat_o <= std_logic_vector(memBRead);
 					state <= State_WriteIODone;
 					if CACHE=false then
@@ -878,7 +881,7 @@ begin
 				end if;
 
         when State_WriteIODone =>
-			 stb_o<='1';
+			 stb<='1';
 			 we_o<='1';
           if (ack_i = '1') then
             state <= State_Resync;
@@ -887,9 +890,9 @@ begin
         when State_Fetch =>
 			 -- AMR - fetch from external RAM, not Block RAM.
 				 if EXECUTE_RAM=true then -- Selectable
-					mem_o <= (others => '0');
-					mem_o(pcmaxbit downto 2)<=std_logic_vector(pc(pcmaxbit downto 2));
-					stb_o<=fetchneeded and not inrom;
+					adr_o <= (others => '0');
+					adr_o(pcmaxbit downto 2)<=std_logic_vector(pc(pcmaxbit downto 2));
+					stb<=fetchneeded and not inrom;
 --					out_mem_readEnable <= fetchneeded and not inrom;
 				 end if;
 				 -- FIXME - don't refetch if data is still valid.
@@ -904,7 +907,7 @@ begin
         when State_FetchNext =>
           -- at this point memARead contains the value that is either
           -- from the top of stack or should be copied to the top of the stack
-			 if in_mem_busy='0' or fetchneeded='0' or inrom='1' then
+			 if ack_i='1' or fetchneeded='0' or inrom='1' then
 				 memAWriteEnable <= '1';
 				 memAWrite       <= memARead;
 				 memAAddr(AddrBitBRAM_range) <= sp;
