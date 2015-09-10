@@ -10,33 +10,88 @@
 #include <unistd.h>
 #include <stdio.h>
 
+#include <getopt.h>
+
 typedef unsigned char BYTE;
+
+struct RomGenOptions
+{
+	int offset;
+	int limit;
+};
+
+int ParseOptions(int argc,char **argv,struct RomGenOptions *opts)
+{
+	static struct option long_options[] =
+	{
+		{"help",no_argument,NULL,'h'},
+		{"offset",required_argument,NULL,'o'},
+		{"limit",required_argument,NULL,'l'},
+		{0, 0, 0, 0}
+	};
+
+	while(1)
+	{
+		int c;
+		c = getopt_long(argc,argv,"ho:l:",long_options,NULL);
+		if(c==-1)
+			break;
+		switch (c)
+		{
+			case 'h':
+				printf("Usage: %s [options] <filename>\n",argv[0]);
+				printf("    -h --help\t  display this message\n");
+				printf("    -o --offset\t  skip a number of bytes before outputting ROM data.\n");
+				printf("    -l --limit\t  stop after a specified number of bytes of ROM data.\n");
+				break;
+			case 'o':
+				opts->offset=atoi(optarg);
+				break;
+			case 'l':
+				opts->limit=atoi(optarg);
+				break;
+		}
+	}
+	return(optind);
+}
 
 main(int argc, char **argv)
 {
-       BYTE    opcode[4];
-       int     fd;
-       int     addr = 0;
-       ssize_t s;
+	BYTE    opcode[4];
+	int     fd;
+	int     addr = 0;
+	int i;
+	struct RomGenOptions opts;
+	ssize_t s;
 
-// Check the user has given us an input file.
-       if(argc < 2)
-       {
-               printf("Usage: %s <binary_file>\n\n", argv[0]);
-               return 1;
-       }
+	opts.limit=0x7fffffff;
+	opts.offset=0;
+
+	i=ParseOptions(argc,argv,&opts);
+
+	// Check the user has given us an input file.
+	if(i>=argc)
+		return 1;
 
 // Open the input file.
-       fd = open(argv[1], 0);
+       fd = open(argv[i], 0);
        if(fd == -1)
        {
                perror("File Open");
                return 2;
        }
 
-       while(1)
+       while(addr<(opts.limit/4))
        {
        // Read 32 bits.
+		if(opts.offset)
+		{
+			while(opts.offset>0)
+			{
+               s = read(fd, opcode, 4);
+				opts.offset-=4;
+			}
+		}
                s = read(fd, opcode, 4);
                if(s == -1)
                {
