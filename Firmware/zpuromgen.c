@@ -18,6 +18,7 @@ struct RomGenOptions
 {
 	int offset;
 	int limit;
+	int byteswap;
 };
 
 int ParseOptions(int argc,char **argv,struct RomGenOptions *opts)
@@ -27,13 +28,14 @@ int ParseOptions(int argc,char **argv,struct RomGenOptions *opts)
 		{"help",no_argument,NULL,'h'},
 		{"offset",required_argument,NULL,'o'},
 		{"limit",required_argument,NULL,'l'},
+		{"byteswap",no_argument,NULL,'b'},
 		{0, 0, 0, 0}
 	};
 
 	while(1)
 	{
 		int c;
-		c = getopt_long(argc,argv,"ho:l:",long_options,NULL);
+		c = getopt_long(argc,argv,"ho:l:b",long_options,NULL);
 		if(c==-1)
 			break;
 		switch (c)
@@ -43,12 +45,16 @@ int ParseOptions(int argc,char **argv,struct RomGenOptions *opts)
 				printf("    -h --help\t  display this message\n");
 				printf("    -o --offset\t  skip a number of bytes before outputting ROM data.\n");
 				printf("    -l --limit\t  stop after a specified number of bytes of ROM data.\n");
+				printf("    -b --byteswap\t  reverse the byte order of the ROM data.\n");
 				break;
 			case 'o':
 				opts->offset=atoi(optarg);
 				break;
 			case 'l':
 				opts->limit=atoi(optarg);
+				break;
+			case 'b':
+				opts->byteswap=1;
 				break;
 		}
 	}
@@ -66,49 +72,60 @@ main(int argc, char **argv)
 
 	opts.limit=0x7fffffff;
 	opts.offset=0;
+	opts.byteswap=0;
 
 	i=ParseOptions(argc,argv,&opts);
 
 	// Check the user has given us an input file.
 	if(i>=argc)
-		return 1;
+	return 1;
 
-// Open the input file.
-       fd = open(argv[i], 0);
-       if(fd == -1)
-       {
-               perror("File Open");
-               return 2;
-       }
+	// Open the input file.
+	fd = open(argv[i], 0);
+	if(fd == -1)
+	{
+		perror("File Open");
+		return 2;
+	}
 
-       while(addr<(opts.limit/4))
-       {
-       // Read 32 bits.
+	while(addr<(opts.limit/4))
+	{
+		// Read 32 bits.
 		if(opts.offset)
 		{
 			while(opts.offset>0)
 			{
-               s = read(fd, opcode, 4);
+				s = read(fd, opcode, 4);
 				opts.offset-=4;
 			}
 		}
-               s = read(fd, opcode, 4);
-               if(s == -1)
-               {
-                       perror("File read");
-                       return 3;
-               }
+		s = read(fd, opcode, 4);
+		if(s == -1)
+		{
+			perror("File read");
+			return 3;
+		}
 
-               if(s == 0)
-                       break; // End of file.
+		if(s == 0)
+			break; // End of file.
 
-       // Output to STDOUT.
-               printf("%6d => x\"%02x%02x%02x%02x\",\n",
-                      addr++, opcode[0], opcode[1],
-                      opcode[2], opcode[3]);
-       }
+		// Output to STDOUT.
 
-       close(fd);
-       return 0;
+		if(opts.byteswap)
+		{
+			printf("%6d => x\"%02x%02x%02x%02x\",\n",
+			addr++, opcode[3], opcode[2],
+			opcode[1], opcode[0]);
+		}
+		else
+		{
+			printf("%6d => x\"%02x%02x%02x%02x\",\n",
+			addr++, opcode[0], opcode[1],
+			opcode[2], opcode[3]);
+		}
+	}
+
+	close(fd);
+	return 0;
 }
 
